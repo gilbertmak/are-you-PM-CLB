@@ -162,3 +162,7 @@ export function generateExample(term: Term) {
     pinyin: `Zài gōngzuò chǎngjǐng zhōng, tuánduì tǎolùn le ${term.pinyin}.`,
   };
 }
+
+export function getExampleSentences(term: Term) {
+  return term.exampleSentences.length ? term.exampleSentences : [generateExample(term)];
+}

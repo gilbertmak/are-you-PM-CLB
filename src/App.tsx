@@ -3,8 +3,11 @@ import { Banner } from './components/Banner';
 import { CategoryTabs } from './components/CategoryTabs';
 import { FlashcardStudy } from './components/FlashcardStudy';
 import { GlossaryTable } from './components/GlossaryTable';
+import { LearningModeStudy } from './components/LearningModeStudy';
 import { SearchControls } from './components/SearchControls';
+import { StudyNav } from './components/StudyNav';
 import { terms } from './data/terms';
+import { normalizeRoute, type StudyRoute } from './lib/learningModes';
 import { rateCard } from './lib/spacedRepetition';
 import type { Category, ProgressMap, Term } from './lib/studySession';
 import {
@@ -26,7 +29,12 @@ function loadProgress(): ProgressMap {
   }
 }
 
+function getInitialRoute() {
+  return normalizeRoute(window.location.pathname);
+}
+
 export default function App() {
+  const [activeRoute, setActiveRoute] = useState<StudyRoute>(() => getInitialRoute());
   const [activeCategory, setActiveCategory] = useState<Category>('all');
   const [query, setQuery] = useState('');
   const [progress, setProgress] = useState<ProgressMap>(() => loadProgress());
@@ -36,6 +44,17 @@ export default function App() {
   const [sessionCorrect, setSessionCorrect] = useState(0);
 
   const filteredTerms = useMemo(() => filterTerms(terms, activeCategory, query), [activeCategory, query]);
+
+  const navigateTo = useCallback((route: StudyRoute) => {
+    window.history.pushState({}, '', route);
+    setActiveRoute(route);
+  }, []);
+
+  useEffect(() => {
+    const handlePopState = () => setActiveRoute(normalizeRoute(window.location.pathname));
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
 
   const refreshDeck = useCallback((sourceTerms: readonly Term[] = filteredTerms, sourceProgress: ProgressMap = progress) => {
     setDeck(buildDeck(sourceTerms, sourceProgress));
@@ -65,11 +84,14 @@ export default function App() {
   const dueCount = getDueCount(filteredTerms, progress);
   const masteredCount = getMasteredCount(filteredTerms, progress);
   const nextReviewLabel = getNextReviewLabel(filteredTerms, progress);
+  const showFlashcards = activeRoute === '/study/flashcards';
+  const showGlossary = activeRoute === '/glossary';
 
   return (
     <>
       <Banner />
       <main>
+        <StudyNav activeRoute={activeRoute} onNavigate={navigateTo} />
         <CategoryTabs activeCategory={activeCategory} onChange={setActiveCategory} />
         <SearchControls
           count={filteredTerms.length}
@@ -78,18 +100,21 @@ export default function App() {
           query={query}
           scopeLabel={getCategoryName(activeCategory)}
         />
-        <FlashcardStudy
-          category={activeCategory}
-          currentIndex={currentIndex}
-          deck={deck}
-          masteredCount={masteredCount}
-          nextReviewLabel={nextReviewLabel}
-          onRate={handleRate}
-          onRefreshDeck={() => refreshDeck()}
-          reviewedCount={sessionReviewed}
-          sessionCorrect={sessionCorrect}
-        />
-        <GlossaryTable terms={filteredTerms} />
+        {showFlashcards ? (
+          <FlashcardStudy
+            category={activeCategory}
+            currentIndex={currentIndex}
+            deck={deck}
+            masteredCount={masteredCount}
+            nextReviewLabel={nextReviewLabel}
+            onRate={handleRate}
+            onRefreshDeck={() => refreshDeck()}
+            reviewedCount={sessionReviewed}
+            sessionCorrect={sessionCorrect}
+          />
+        ) : null}
+        {!showGlossary ? <LearningModeStudy route={activeRoute} terms={filteredTerms} /> : null}
+        {showGlossary ? <GlossaryTable terms={filteredTerms} /> : null}
       </main>
       <footer className="footer">Progress is saved locally in your browser for future review sessions.</footer>
     </>
