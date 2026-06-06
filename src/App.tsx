@@ -3,7 +3,9 @@ import { Banner } from './components/Banner';
 import { CategoryTabs } from './components/CategoryTabs';
 import { FlashcardStudy } from './components/FlashcardStudy';
 import { GlossaryTable } from './components/GlossaryTable';
+import { LearningModeStudy } from './components/LearningModeStudy';
 import { SearchControls } from './components/SearchControls';
+import { StudyNav } from './components/StudyNav';
 import { terms } from './data/terms';
 import type { AttemptValidationResult } from './lib/answerValidation';
 import { rateCard } from './lib/spacedRepetition';
@@ -46,6 +48,10 @@ function download(filename: string, contents: string, type: string) {
   URL.revokeObjectURL(url);
 }
 
+function getInitialRoute() {
+  return normalizeRoute(window.location.pathname);
+}
+
 export default function App() {
   const progressApi = useMemo(() => createProgressApi(), []);
   const cachedSnapshot = useMemo(() => readCachedProgress(), []);
@@ -60,6 +66,17 @@ export default function App() {
   const [syncStatus, setSyncStatus] = useState('Progress cache ready.');
 
   const filteredTerms = useMemo(() => getFilteredTerms(terms, filters, query, progress), [filters, progress, query]);
+
+  const navigateTo = useCallback((route: StudyRoute) => {
+    window.history.pushState({}, '', route);
+    setActiveRoute(route);
+  }, []);
+
+  useEffect(() => {
+    const handlePopState = () => setActiveRoute(normalizeRoute(window.location.pathname));
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
 
   const refreshDeck = useCallback((sourceTerms: readonly Term[] = filteredTerms, sourceProgress: ProgressMap = progress) => {
     setDeck(buildDeck(sourceTerms, sourceProgress));
@@ -152,7 +169,8 @@ export default function App() {
     <>
       <Banner />
       <main>
-        <CategoryTabs activeCategory={filters.category} onChange={(category: Category) => setFilters((current) => ({ ...current, category }))} />
+        <StudyNav activeRoute={activeRoute} onNavigate={navigateTo} />
+        <CategoryTabs activeCategory={activeCategory} onChange={setActiveCategory} />
         <SearchControls
           count={filteredTerms.length}
           dueCount={dueCount}
