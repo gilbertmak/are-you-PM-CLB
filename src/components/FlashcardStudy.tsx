@@ -11,7 +11,7 @@ interface FlashcardStudyProps {
   nextReviewLabel: string;
   reviewedCount: number;
   sessionCorrect: number;
-  onRate: (gotIt: boolean) => void;
+  onRate: (gotIt: boolean, attempt: string) => void;
   onRefreshDeck: () => void;
 }
 
@@ -58,8 +58,8 @@ export function FlashcardStudy({
 
       if (!revealed) return;
       if (typing && (event.key === 'ArrowLeft' || event.key === 'ArrowRight')) event.preventDefault();
-      if (event.key === 'ArrowLeft') onRate(false);
-      if (event.key === 'ArrowRight') onRate(true);
+      if (event.key === 'ArrowLeft') onRate(false, attempt);
+      if (event.key === 'ArrowRight') onRate(true, attempt);
     };
 
     window.addEventListener('keydown', handleKeydown);
@@ -129,11 +129,11 @@ export function FlashcardStudy({
               </div>
               <div className={`swipe-row ${revealed ? 'visible' : ''}`}>
                 <div>
-                  <button aria-label="Not confident" className="swipe-btn swipe-left" onClick={() => onRate(false)} type="button">←</button>
+                  <button aria-label="Not confident" className="swipe-btn swipe-left" onClick={() => onRate(false, attempt)} type="button">←</button>
                   <div className="swipe-caption">Need review</div>
                 </div>
                 <div>
-                  <button aria-label="Got it right" className="swipe-btn swipe-right" onClick={() => onRate(true)} type="button">→</button>
+                  <button aria-label="Got it right" className="swipe-btn swipe-right" onClick={() => onRate(true, attempt)} type="button">→</button>
                   <div className="swipe-caption">Got it</div>
                 </div>
               </div>
