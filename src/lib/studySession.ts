@@ -1,6 +1,24 @@
 export type Category = 'all' | 'pm' | 'ai' | 'rc';
 export type TermCategory = Exclude<Category, 'all'>;
-export type Term = readonly [english: string, mandarin: string, pinyin: string, category: TermCategory];
+export type ExampleType = 'short_sentence' | 'meeting_sentence' | 'slack_email' | 'negotiation_escalation';
+export type Scenario = 'roadmap_review' | 'sprint_planning' | 'compliance_escalation' | 'AI_feature_review' | 'risk_committee';
+
+export interface ExampleSentence {
+  type: ExampleType;
+  scenario: Scenario;
+  zh: string;
+  pinyin: string;
+  en: string;
+  literalBreakdown: string;
+}
+
+export type Term = readonly [
+  english: string,
+  mandarin: string,
+  pinyin: string,
+  category: TermCategory,
+  exampleSentences: readonly ExampleSentence[],
+];
 
 export interface ProgressRecord {
   attempts: number;
@@ -100,21 +118,9 @@ export function getNextReviewLabel(terms: readonly Term[], progress: ProgressMap
 }
 
 export function generateExample(term: Term) {
-  const [english, mandarin, , category] = term;
-  if (category === 'pm') {
-    return {
-      en: `In our product review, we discussed "${english}" before the next release.`,
-      zh: `在产品评审中，我们在下次发布前讨论了“${mandarin}”。`,
-    };
-  }
-  if (category === 'ai') {
-    return {
-      en: `For the new AI feature, we evaluated "${english}" in the workflow.`,
-      zh: `针对新的AI功能，我们评估了“${mandarin}”在流程中的作用。`,
-    };
-  }
-  return {
-    en: `Before launch, the team checked "${english}" during compliance review.`,
-    zh: `在上线前，团队在合规审查中检查了“${mandarin}”。`,
-  };
+  return term[4][0];
+}
+
+export function getExampleSentences(term: Term) {
+  return term[4];
 }

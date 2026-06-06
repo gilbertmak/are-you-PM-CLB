@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { Category, Term } from '../lib/studySession';
-import { generateExample, getCategoryName } from '../lib/studySession';
+import { getCategoryName, getExampleSentences } from '../lib/studySession';
 import { StudyStats } from './StudyStats';
 
 interface FlashcardStudyProps {
@@ -28,13 +28,22 @@ export function FlashcardStudy({
 }: FlashcardStudyProps) {
   const [attempt, setAttempt] = useState('');
   const [revealed, setRevealed] = useState(false);
+  const [exampleIndex, setExampleIndex] = useState(0);
+  const [showLiteralBreakdown, setShowLiteralBreakdown] = useState(false);
   const currentTerm = deck[currentIndex] ?? null;
-  const example = useMemo(() => (currentTerm ? generateExample(currentTerm) : null), [currentTerm]);
+  const examples = useMemo(() => (currentTerm ? getExampleSentences(currentTerm) : []), [currentTerm]);
+  const example = examples[exampleIndex] ?? examples[0] ?? null;
 
   useEffect(() => {
     setAttempt('');
     setRevealed(false);
+    setExampleIndex(0);
+    setShowLiteralBreakdown(false);
   }, [currentTerm]);
+
+  useEffect(() => {
+    if (exampleIndex >= examples.length) setExampleIndex(0);
+  }, [exampleIndex, examples.length]);
 
   useEffect(() => {
     const handleKeydown = (event: KeyboardEvent) => {
@@ -108,9 +117,46 @@ export function FlashcardStudy({
                 <div className="answer-line"><span className="label">Mandarin</span><span className="value cn">{currentTerm[1]}</span></div>
                 <div className="answer-line"><span className="label">Hanyu Pinyin</span><span className="value">{currentTerm[2]}</span></div>
                 <div className="example-box">
-                  <div className="example-label">Product-context example</div>
+                  <div className="example-header">
+                    <div>
+                      <div className="example-label">Curated product-context example</div>
+                      <div className="example-meta">
+                        <span>{example?.type.replace(/_/g, ' ')}</span>
+                        <span>{example?.scenario.replace(/_/g, ' ')}</span>
+                        <span>{examples.length ? `${exampleIndex + 1} / ${examples.length}` : '0 / 0'}</span>
+                      </div>
+                    </div>
+                    <div className="example-controls" aria-label="Example sentence controls">
+                      <button
+                        className="mini-btn"
+                        disabled={examples.length <= 1}
+                        onClick={() => setExampleIndex((index) => (index + examples.length - 1) % examples.length)}
+                        type="button"
+                      >
+                        Previous
+                      </button>
+                      <button
+                        className="mini-btn"
+                        disabled={examples.length <= 1}
+                        onClick={() => setExampleIndex((index) => (index + 1) % examples.length)}
+                        type="button"
+                      >
+                        Next
+                      </button>
+                    </div>
+                  </div>
                   <div className="en">{example?.en}</div>
                   <div className="zh">{example?.zh}</div>
+                  <div className="pinyin">{example?.pinyin}</div>
+                  <label className="literal-toggle">
+                    <input
+                      checked={showLiteralBreakdown}
+                      onChange={(event) => setShowLiteralBreakdown(event.target.checked)}
+                      type="checkbox"
+                    />
+                    Show literal breakdown
+                  </label>
+                  {showLiteralBreakdown ? <div className="literal-breakdown">{example?.literalBreakdown}</div> : null}
                 </div>
               </div>
               <div className={`swipe-row ${revealed ? 'visible' : ''}`}>
