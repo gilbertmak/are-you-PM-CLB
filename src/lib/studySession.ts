@@ -41,6 +41,7 @@ export interface ProgressHistoryEntry {
 }
 
 export interface ProgressRecord {
+  termId?: string;
   attempts: number;
   correct: number;
   incorrect: number;
@@ -162,6 +163,10 @@ export function getNextReviewLabel(terms: readonly Term[], progress: ProgressMap
   const diffHours = Math.round(diffMs / 36e5);
   if (diffHours < 24) return `${diffHours}h`;
   return `${Math.round(diffHours / 24)}d`;
+}
+
+export function getExampleSentences(term: Term) {
+  return term.exampleSentences.length ? term.exampleSentences : [generateExample(term)];
 }
 
 export function generateExample(term: Term) {

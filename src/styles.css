@@ -307,3 +307,45 @@
       th, td { padding:10px 12px; }
       td:nth-child(4), th:nth-child(4) { display:none; }
     }
+
+.progress-tools {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.progress-tools h2 {
+  color: #7a3b1e;
+  font-size: 1.15rem;
+  margin-bottom: 6px;
+}
+
+.progress-tools p {
+  color: #7d6a56;
+  margin: 0;
+}
+
+.btn-import {
+  background: #fff8ed;
+  color: #7a3b1e;
+  cursor: pointer;
+  position: relative;
+}
+
+.btn-import input {
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  height: 1px;
+  overflow: hidden;
+  position: absolute;
+  white-space: nowrap;
+  width: 1px;
+}
+
+@media (max-width: 720px) {
+  .progress-tools {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}

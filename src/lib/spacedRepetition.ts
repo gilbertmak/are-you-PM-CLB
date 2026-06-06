@@ -2,7 +2,19 @@ import type { AttemptValidationResult } from './answerValidation';
 import type { ProgressMap, ProgressRecord, Term } from './studySession';
 import { getProgress, termId } from './studySession';
 
-export function scheduleFromResult(prev: ProgressRecord, gotIt: boolean, now = Date.now()) {
+export interface ScheduleResult {
+  ease: number;
+  streak: number;
+  intervalHours: number;
+  dueAt: number;
+}
+
+export interface RateCardResult {
+  progress: ProgressMap;
+  review: ReviewEvent;
+}
+
+export function scheduleFromResult(prev: ProgressRecord, gotIt: boolean, now = Date.now()): ScheduleResult {
   const ease = Math.max(1.3, Math.min(3.2, (prev.ease || 2.5) + (gotIt ? 0.12 : -0.2)));
   const streak = gotIt ? (prev.streak || 0) + 1 : 0;
   let intervalHours: number;
