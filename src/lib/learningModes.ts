@@ -1,6 +1,6 @@
 import type { Term } from './studySession';
 
-export type StudyRoute = '/study/flashcards' | '/study/listening' | '/study/scenarios' | '/glossary';
+export type StudyRoute = '/' | '/study' | '/study/flashcards' | '/study/listening' | '/study/scenarios' | '/glossary' | '/progress' | `/terms/${string}`;
 
 export type LearningModeId =
   | 'recognition'
@@ -22,10 +22,13 @@ export interface LearningModeConfig {
 }
 
 export const STUDY_ROUTES: Array<{ path: StudyRoute; label: string; description: string }> = [
+  { path: '/', label: 'Home', description: 'Production-ready Mandarin PM study dashboard.' },
+  { path: '/study', label: 'Study', description: 'Start with due flashcards and focused study modes.' },
   { path: '/study/flashcards', label: 'Flashcards', description: 'Recognition, production, pinyin, and sentence drills.' },
   { path: '/study/listening', label: 'Listening', description: 'Hear workplace Mandarin, drill tone patterns, and record pronunciation.' },
   { path: '/study/scenarios', label: 'Scenarios', description: 'Practice meetings, stakeholder responses, and role-play.' },
   { path: '/glossary', label: 'Glossary', description: 'Search the full Mandarin PM vocabulary table.' },
+  { path: '/progress', label: 'Progress', description: 'Import, export, and sync study progress.' },
 ];
 
 export const LEARNING_MODES: LearningModeConfig[] = [
@@ -94,12 +97,15 @@ export const LEARNING_MODES: LearningModeConfig[] = [
   },
 ];
 
-export const DEFAULT_ROUTE: StudyRoute = '/study/flashcards';
+export const DEFAULT_ROUTE: StudyRoute = '/';
 
 export function normalizeRoute(pathname: string): StudyRoute {
+  if (pathname === '/' || pathname === '/study' || pathname === '/study/flashcards') return pathname;
   if (pathname === '/study/listening') return '/study/listening';
   if (pathname === '/study/scenarios') return '/study/scenarios';
   if (pathname === '/glossary') return '/glossary';
+  if (pathname === '/progress') return '/progress';
+  if (/^\/terms\/[^/]+$/.test(pathname)) return pathname as `/terms/${string}`;
   return DEFAULT_ROUTE;
 }
 
@@ -109,9 +115,15 @@ export function getDefaultModeForRoute(route: StudyRoute): LearningModeId {
   return 'recognition';
 }
 
+export function getCanonicalStudyRoute(route: StudyRoute): StudyRoute {
+  if (route === '/' || route === '/study') return '/study/flashcards';
+  return route;
+}
+
 export function getModesForRoute(route: StudyRoute) {
-  if (route === '/glossary') return [];
-  return LEARNING_MODES.filter((mode) => mode.route === route);
+  const canonicalRoute = getCanonicalStudyRoute(route);
+  if (canonicalRoute === '/glossary' || canonicalRoute === '/progress' || canonicalRoute.startsWith('/terms/')) return [];
+  return LEARNING_MODES.filter((mode) => mode.route === canonicalRoute);
 }
 
 export function getTermAt(terms: readonly Term[], index: number) {

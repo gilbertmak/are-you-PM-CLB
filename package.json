@@ -6,7 +6,18 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "typecheck": "tsc -b",
+    "lint": "tsc -p tsconfig.app.json --noEmit",
+    "format": "node scripts/check-format.mjs",
+    "test": "npm run test:unit && npm run test:components && npm run test:a11y",
+    "test:compile": "tsc -p tsconfig.test.json && node scripts/fix-test-imports.mjs",
+    "test:unit": "npm run test:compile && node --test build-tests/tests/domain.test.js",
+    "test:components": "npm run test:compile && node --test build-tests/tests/components-a11y.test.js",
+    "test:a11y": "npm run test:compile && node --test --test-name-pattern=\"accessibility\" build-tests/tests/components-a11y.test.js",
+    "qa:content": "node scripts/validate-content.mjs",
+    "deploy:static": "npm run build",
+    "deploy:backend": "echo \"Backend deployment is intentionally deferred until persistence/auth services are added.\""
   },
   "dependencies": {
     "react": "^19.1.0",
