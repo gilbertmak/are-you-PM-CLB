@@ -1,6 +1,34 @@
 export type Category = 'all' | 'pm' | 'ai' | 'rc';
 export type TermCategory = Exclude<Category, 'all'>;
-export type Term = readonly [english: string, mandarin: string, pinyin: string, category: TermCategory];
+export type TermLevel = 'beginner' | 'working' | 'advanced';
+export type TermDomain = 'product' | 'AI' | 'risk' | 'compliance' | 'meetings' | 'metrics';
+export type FormalRegister = 'casual' | 'business' | 'regulatory' | 'technical';
+
+export interface ExampleSentence {
+  english: string;
+  chinese: string;
+  pinyin: string;
+  literalGloss?: string;
+}
+
+export interface Term {
+  id: string;
+  english: string;
+  simplified: string;
+  traditional?: string;
+  pinyin: string;
+  category: TermCategory;
+  level: TermLevel;
+  domain: TermDomain;
+  partOfSpeech: string;
+  usageNote: string;
+  formalRegister: FormalRegister;
+  collocations: readonly string[];
+  exampleSentences: readonly ExampleSentence[];
+  commonMistakes: readonly string[];
+  relatedTerms: readonly string[];
+  audioUrl: string;
+}
 
 export interface ProgressRecord {
   attempts: number;
@@ -19,7 +47,7 @@ export type ProgressMap = Record<string, ProgressRecord>;
 export const STORAGE_KEY = 'pm_mandarin_flashcard_progress_v3';
 
 export function termId(term: Term) {
-  return `${term[3]}::${term[0]}`;
+  return term.id;
 }
 
 export function getCategoryName(category: Category | TermCategory) {
@@ -45,10 +73,35 @@ export function getProgress(term: Term, progress: ProgressMap): ProgressRecord {
 export function filterTerms(terms: readonly Term[], category: Category, query: string) {
   const q = query.trim().toLowerCase();
   return terms.filter((term) => {
-    const [english, mandarin, pinyin, termCategory] = term;
-    if (category !== 'all' && termCategory !== category) return false;
+    if (category !== 'all' && term.category !== category) return false;
     if (!q) return true;
-    return `${english} ${mandarin} ${pinyin}`.toLowerCase().includes(q);
+    const searchableText = [
+      term.id,
+      term.english,
+      term.simplified,
+      term.traditional,
+      term.pinyin,
+      term.category,
+      term.level,
+      term.domain,
+      term.partOfSpeech,
+      term.usageNote,
+      term.formalRegister,
+      ...term.collocations,
+      ...term.commonMistakes,
+      ...term.relatedTerms,
+      ...term.exampleSentences.flatMap((example) => [
+        example.english,
+        example.chinese,
+        example.pinyin,
+        example.literalGloss,
+      ]),
+    ]
+      .filter(Boolean)
+      .join(' ')
+      .toLowerCase();
+
+    return searchableText.includes(q);
   });
 }
 
@@ -100,21 +153,12 @@ export function getNextReviewLabel(terms: readonly Term[], progress: ProgressMap
 }
 
 export function generateExample(term: Term) {
-  const [english, mandarin, , category] = term;
-  if (category === 'pm') {
-    return {
-      en: `In our product review, we discussed "${english}" before the next release.`,
-      zh: `在产品评审中，我们在下次发布前讨论了“${mandarin}”。`,
-    };
-  }
-  if (category === 'ai') {
-    return {
-      en: `For the new AI feature, we evaluated "${english}" in the workflow.`,
-      zh: `针对新的AI功能，我们评估了“${mandarin}”在流程中的作用。`,
-    };
-  }
+  const example = term.exampleSentences[0];
+  if (example) return example;
+
   return {
-    en: `Before launch, the team checked "${english}" during compliance review.`,
-    zh: `在上线前，团队在合规审查中检查了“${mandarin}”。`,
+    english: `In a work context, the team discussed "${term.english}".`,
+    chinese: `在工作场景中，团队讨论了“${term.simplified}”。`,
+    pinyin: `Zài gōngzuò chǎngjǐng zhōng, tuánduì tǎolùn le ${term.pinyin}.`,
   };
 }

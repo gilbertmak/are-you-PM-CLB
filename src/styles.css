@@ -215,6 +215,8 @@
     }
     .example-box .en { color:#374151; }
     .example-box .zh { color:#7a3b1e; margin-top:6px; }
+    .example-box .pinyin { color:#5f5b52; font-size:0.92rem; margin-top:5px; }
+    .example-box .literal { color:#8b6f4e; font-size:0.86rem; margin-top:5px; font-style:italic; }
     .swipe-row {
       display:none;
       justify-content:center;
