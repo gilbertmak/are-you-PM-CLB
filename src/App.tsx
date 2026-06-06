@@ -7,12 +7,21 @@ import { SearchControls } from './components/SearchControls';
 import { terms } from './data/terms';
 import type { AttemptValidationResult } from './lib/answerValidation';
 import { rateCard } from './lib/spacedRepetition';
-import type { Category, ProgressMap, Term } from './lib/studySession';
 import {
+  createProgressApi,
+  exportProgressCsv,
+  exportProgressJson,
+  importProgress,
+  readCachedProgress,
+} from './lib/persistence';
+import type { ProgressSnapshot, ReviewEvent } from './lib/persistence';
+import type { Category, GlossaryFilters, ProgressMap, Term } from './lib/studySession';
+import {
+  DEFAULT_GLOSSARY_FILTERS,
   buildDeck,
-  filterTerms,
   getCategoryName,
   getDueCount,
+  getFilteredTerms,
   getMasteredCount,
   getNextReviewLabel,
   termId,
@@ -40,7 +49,7 @@ function download(filename: string, contents: string, type: string) {
 export default function App() {
   const progressApi = useMemo(() => createProgressApi(), []);
   const cachedSnapshot = useMemo(() => readCachedProgress(), []);
-  const [activeCategory, setActiveCategory] = useState<Category>('all');
+  const [filters, setFilters] = useState<GlossaryFilters>(DEFAULT_GLOSSARY_FILTERS);
   const [query, setQuery] = useState('');
   const [progress, setProgress] = useState<ProgressMap>(cachedSnapshot.progress);
   const [reviews, setReviews] = useState<ReviewEvent[]>(cachedSnapshot.reviews);
@@ -50,7 +59,7 @@ export default function App() {
   const [sessionCorrect, setSessionCorrect] = useState(0);
   const [syncStatus, setSyncStatus] = useState('Progress cache ready.');
 
-  const filteredTerms = useMemo(() => filterTerms(terms, activeCategory, query), [activeCategory, query]);
+  const filteredTerms = useMemo(() => getFilteredTerms(terms, filters, query, progress), [filters, progress, query]);
 
   const refreshDeck = useCallback((sourceTerms: readonly Term[] = filteredTerms, sourceProgress: ProgressMap = progress) => {
     setDeck(buildDeck(sourceTerms, sourceProgress));
@@ -67,7 +76,7 @@ export default function App() {
         if (!active) return;
         setProgress(snapshot.progress);
         setReviews(snapshot.reviews);
-        setDeck(buildDeck(filteredTerms, snapshot.progress));
+        setDeck(buildDeck(getFilteredTerms(terms, filters, query, snapshot.progress), snapshot.progress));
         setSyncStatus(snapshot.migratedFrom ? 'Migrated legacy progress and cached it for sync.' : 'Progress loaded.');
       })
       .catch(() => {
@@ -78,17 +87,29 @@ export default function App() {
     return () => {
       active = false;
     };
-  }, [filteredTerms, progressApi]);
+  }, [progressApi]);
 
   useEffect(() => {
     refreshDeck(filteredTerms, progress);
-  }, [activeCategory, query]);
+  }, [filters, query]);
 
   const handleRate = useCallback((gotIt: boolean, validation?: AttemptValidationResult) => {
     const term = deck[currentIndex];
     if (!term) return;
 
-    setProgress((currentProgress) => rateCard(term, gotIt, currentProgress, validation));
+    const nextProgress = rateCard(term, gotIt, progress, validation);
+    const nextState = nextProgress[termId(term)];
+    const review: ReviewEvent = {
+      termId: termId(term),
+      attempt: validation?.normalizedAttempt || validation?.matchedAgainst || '',
+      validationResult: gotIt ? 'correct' : 'incorrect',
+      selfRating: gotIt ? 'got-it' : 'needs-review',
+      reviewedAt: nextState.lastReviewedAt || Date.now(),
+      nextDueAt: nextState.dueAt,
+    };
+
+    setProgress(nextProgress);
+    setReviews((currentReviews) => [...currentReviews, review]);
     setSessionReviewed((count) => count + 1);
     if (gotIt) setSessionCorrect((count) => count + 1);
     setCurrentIndex((index) => index + 1);
@@ -131,16 +152,27 @@ export default function App() {
     <>
       <Banner />
       <main>
-        <CategoryTabs activeCategory={activeCategory} onChange={setActiveCategory} />
+        <CategoryTabs activeCategory={filters.category} onChange={(category: Category) => setFilters((current) => ({ ...current, category }))} />
         <SearchControls
           count={filteredTerms.length}
           dueCount={dueCount}
+          filters={filters}
+          onFiltersChange={setFilters}
           onQueryChange={setQuery}
+          onSavedListSelect={(listId) => {
+            if (listId === 'weekly-product-review') {
+              setQuery('');
+              setFilters({ ...DEFAULT_GLOSSARY_FILTERS, domain: 'product', level: 'working', sortBy: 'weakest' });
+            } else {
+              setQuery('');
+              setFilters({ ...DEFAULT_GLOSSARY_FILTERS, category: 'ai', scenario: 'ai-product-conversations', sortBy: 'newest' });
+            }
+          }}
           query={query}
-          scopeLabel={getCategoryName(activeCategory)}
+          scopeLabel={getCategoryName(filters.category)}
         />
         <FlashcardStudy
-          category={activeCategory}
+          category={filters.category}
           currentIndex={currentIndex}
           deck={deck}
           masteredCount={masteredCount}
@@ -164,7 +196,18 @@ export default function App() {
             </label>
           </div>
         </section>
-        <GlossaryTable terms={filteredTerms} />
+        <GlossaryTable
+          terms={filteredTerms}
+          allTerms={terms}
+          progress={progress}
+          onCurriculumSelect={(level) => {
+            setQuery('');
+            if (level === 1) setFilters({ ...DEFAULT_GLOSSARY_FILTERS, category: 'pm', domain: 'product', level: 'beginner' });
+            if (level === 2) setFilters({ ...DEFAULT_GLOSSARY_FILTERS, domain: 'meetings', sortBy: 'alphabetical' });
+            if (level === 3) setFilters({ ...DEFAULT_GLOSSARY_FILTERS, category: 'ai', scenario: 'ai-product-conversations' });
+            if (level === 4) setFilters({ ...DEFAULT_GLOSSARY_FILTERS, category: 'rc', scenario: 'risk-escalation' });
+          }}
+        />
       </main>
       <footer className="footer">Anonymous progress is cached locally; signed-in learners sync through /api/progress, /api/reviews, and /api/progress/:termId.</footer>
     </>
