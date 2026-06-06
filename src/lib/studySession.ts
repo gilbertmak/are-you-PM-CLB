@@ -3,6 +3,32 @@ export type TermCategory = Exclude<Category, 'all'>;
 export type TermLevel = 'beginner' | 'working' | 'advanced';
 export type TermDomain = 'product' | 'AI' | 'risk' | 'compliance' | 'meetings' | 'metrics';
 export type FormalRegister = 'casual' | 'business' | 'regulatory' | 'technical';
+export type MasteryFilter = 'all' | 'mastered' | 'unmastered';
+export type PronunciationDifficulty = 'easy' | 'medium' | 'hard';
+export type WorkplaceScenario = 'product-planning' | 'stakeholder-meetings' | 'metrics-review' | 'ai-product-conversations' | 'risk-escalation' | 'compliance-review';
+export type SortOption = 'alphabetical' | 'due-date' | 'weakest' | 'most-reviewed' | 'newest';
+
+export interface GlossaryFilters {
+  category: Category;
+  domain: 'all' | TermDomain;
+  level: 'all' | TermLevel;
+  mastery: MasteryFilter;
+  dueNow: boolean;
+  pronunciation: 'all' | PronunciationDifficulty;
+  scenario: 'all' | WorkplaceScenario;
+  sortBy: SortOption;
+}
+
+export const DEFAULT_GLOSSARY_FILTERS: GlossaryFilters = {
+  category: 'all',
+  domain: 'all',
+  level: 'all',
+  mastery: 'all',
+  dueNow: false,
+  pronunciation: 'all',
+  scenario: 'all',
+  sortBy: 'alphabetical',
+};
 
 export interface ExampleSentence {
   english: string;
@@ -82,40 +108,112 @@ export function getProgress(term: Term, progress: ProgressMap): ProgressRecord {
   };
 }
 
-export function filterTerms(terms: readonly Term[], category: Category, query: string) {
-  const q = query.trim().toLowerCase();
-  return terms.filter((term) => {
-    if (category !== 'all' && term.category !== category) return false;
-    if (!q) return true;
-    const searchableText = [
-      term.id,
-      term.english,
-      term.simplified,
-      term.traditional,
-      term.pinyin,
-      ...(term.acceptedAliases ?? []),
-      term.category,
-      term.level,
-      term.domain,
-      term.partOfSpeech,
-      term.usageNote,
-      term.formalRegister,
-      ...term.collocations,
-      ...term.commonMistakes,
-      ...term.relatedTerms,
-      ...term.exampleSentences.flatMap((example) => [
-        example.english,
-        example.chinese,
-        example.pinyin,
-        example.literalGloss,
-      ]),
-    ]
-      .filter(Boolean)
-      .join(' ')
-      .toLowerCase();
+export function isMastered(record: ProgressRecord) {
+  return record.streak >= 3 && record.intervalHours >= 24;
+}
 
-    return searchableText.includes(q);
-  });
+export function isDue(record: ProgressRecord, now = Date.now()) {
+  return !record.dueAt || record.dueAt <= now;
+}
+
+export function getPronunciationDifficulty(term: Term): PronunciationDifficulty {
+  const syllables = term.pinyin.split(/\s+|-+/).filter(Boolean).length;
+  const hasZhChShR = /zh|ch|sh|r/i.test(term.pinyin);
+  const hasDifficultVowel = /ü|ǖ|ǘ|ǚ|ǜ|x|q/i.test(term.pinyin);
+
+  if (syllables >= 5 || (syllables >= 4 && (hasZhChShR || hasDifficultVowel))) return 'hard';
+  if (syllables >= 3 || hasZhChShR || hasDifficultVowel) return 'medium';
+  return 'easy';
+}
+
+export function getWorkplaceScenario(term: Term): WorkplaceScenario {
+  if (term.domain === 'AI') return 'ai-product-conversations';
+  if (term.domain === 'compliance') return 'compliance-review';
+  if (term.domain === 'risk') return 'risk-escalation';
+  if (term.domain === 'metrics') return 'metrics-review';
+  if (term.domain === 'meetings') return 'stakeholder-meetings';
+  return 'product-planning';
+}
+
+export function getScenarioName(scenario: 'all' | WorkplaceScenario) {
+  if (scenario === 'product-planning') return 'Product planning';
+  if (scenario === 'stakeholder-meetings') return 'Stakeholder meetings';
+  if (scenario === 'metrics-review') return 'Metrics review';
+  if (scenario === 'ai-product-conversations') return 'AI product conversations';
+  if (scenario === 'risk-escalation') return 'Risk escalation';
+  if (scenario === 'compliance-review') return 'Compliance review';
+  return 'All scenarios';
+}
+
+function getSearchableText(term: Term) {
+  return [
+    term.id,
+    term.english,
+    term.simplified,
+    term.traditional,
+    term.pinyin,
+    ...(term.acceptedAliases ?? []),
+    term.category,
+    term.level,
+    term.domain,
+    term.partOfSpeech,
+    term.usageNote,
+    term.formalRegister,
+    ...term.collocations,
+    ...term.commonMistakes,
+    ...term.relatedTerms,
+    ...term.exampleSentences.flatMap((example) => [
+      example.english,
+      example.chinese,
+      example.pinyin,
+      example.literalGloss,
+    ]),
+  ]
+    .filter(Boolean)
+    .join(' ')
+    .toLowerCase();
+}
+
+export function getFilteredTerms(
+  terms: readonly Term[],
+  filters: GlossaryFilters,
+  query: string,
+  progress: ProgressMap = {},
+  now = Date.now(),
+) {
+  const q = query.trim().toLowerCase();
+  const originalOrder = new Map(terms.map((term, index) => [term.id, index]));
+
+  return terms
+    .filter((term) => {
+      const record = getProgress(term, progress);
+      if (filters.category !== 'all' && term.category !== filters.category) return false;
+      if (filters.domain !== 'all' && term.domain !== filters.domain) return false;
+      if (filters.level !== 'all' && term.level !== filters.level) return false;
+      if (filters.mastery === 'mastered' && !isMastered(record)) return false;
+      if (filters.mastery === 'unmastered' && isMastered(record)) return false;
+      if (filters.dueNow && !isDue(record, now)) return false;
+      if (filters.pronunciation !== 'all' && getPronunciationDifficulty(term) !== filters.pronunciation) return false;
+      if (filters.scenario !== 'all' && getWorkplaceScenario(term) !== filters.scenario) return false;
+      return !q || getSearchableText(term).includes(q);
+    })
+    .sort((a, b) => {
+      const pa = getProgress(a, progress);
+      const pb = getProgress(b, progress);
+      if (filters.sortBy === 'due-date') return (pa.dueAt || 0) - (pb.dueAt || 0) || a.english.localeCompare(b.english);
+      if (filters.sortBy === 'weakest') {
+        const accuracyA = pa.attempts ? pa.correct / pa.attempts : 0;
+        const accuracyB = pb.attempts ? pb.correct / pb.attempts : 0;
+        return pa.streak - pb.streak || accuracyA - accuracyB || pb.incorrect - pa.incorrect || a.english.localeCompare(b.english);
+      }
+      if (filters.sortBy === 'most-reviewed') return pb.attempts - pa.attempts || a.english.localeCompare(b.english);
+      if (filters.sortBy === 'newest') return (originalOrder.get(b.id) ?? 0) - (originalOrder.get(a.id) ?? 0);
+      return a.english.localeCompare(b.english);
+    });
+}
+
+export function filterTerms(terms: readonly Term[], category: Category, query: string) {
+  return getFilteredTerms(terms, { ...DEFAULT_GLOSSARY_FILTERS, category }, query);
 }
 
 export function buildDeck(terms: readonly Term[], progress: ProgressMap, now = Date.now()) {
@@ -178,8 +276,4 @@ export function generateExample(term: Term) {
     chinese: `在工作场景中，团队讨论了“${term.simplified}”。`,
     pinyin: `Zài gōngzuò chǎngjǐng zhōng, tuánduì tǎolùn le ${term.pinyin}.`,
   };
-}
-
-export function getExampleSentences(term: Term) {
-  return term.exampleSentences.length ? term.exampleSentences : [generateExample(term)];
 }

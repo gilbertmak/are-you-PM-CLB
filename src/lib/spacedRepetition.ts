@@ -1,4 +1,5 @@
 import type { AttemptValidationResult } from './answerValidation';
+import type { ReviewEvent } from './persistence';
 import type { ProgressMap, ProgressRecord, Term } from './studySession';
 import { getProgress, termId } from './studySession';
 
