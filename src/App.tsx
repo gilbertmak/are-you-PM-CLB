@@ -26,6 +26,7 @@ import {
   getFilteredTerms,
   getMasteredCount,
   getNextReviewLabel,
+  getProgress,
   termId,
 } from './lib/studySession';
 import './styles.css';
@@ -110,6 +111,20 @@ export default function App() {
     refreshDeck(filteredTerms, progress);
   }, [filters, query]);
 
+  const persistReview = useCallback((review: ReviewEvent, nextProgress: ProgressMap) => {
+    const nextState = nextProgress[review.termId];
+    if (!nextState) return;
+
+    setReviews((currentReviews) => [...currentReviews, review]);
+    setSyncStatus(review.kind === 'pronunciation' ? 'Saving pronunciation attempt…' : 'Saving review history…');
+    progressApi.saveReview(review, nextState)
+      .then(() => setSyncStatus(review.kind === 'pronunciation' ? 'Pronunciation attempt saved.' : 'Review saved.'))
+      .catch(() => {
+        progressApi.saveProgress(createSnapshot(nextProgress, [...reviews, review])).catch(() => undefined);
+        setSyncStatus('Attempt cached offline; it will sync when the API is available.');
+      });
+  }, [progressApi, reviews]);
+
   const handleRate = useCallback((gotIt: boolean, validation?: AttemptValidationResult) => {
     const term = deck[currentIndex];
     if (!term) return;
@@ -130,15 +145,26 @@ export default function App() {
     setSessionReviewed((count) => count + 1);
     if (gotIt) setSessionCorrect((count) => count + 1);
     setCurrentIndex((index) => index + 1);
-    setSyncStatus('Saving review history…');
+    persistReview(review, nextProgress);
+  }, [currentIndex, deck, persistReview, progress]);
 
-    progressApi.saveReview(review, nextState)
-      .then(() => setSyncStatus('Review saved.'))
-      .catch(() => {
-        progressApi.saveProgress(createSnapshot(nextProgress, [...reviews, review])).catch(() => undefined);
-        setSyncStatus('Review cached offline; it will sync when the API is available.');
-      });
-  }, [currentIndex, deck, progress, progressApi, reviews]);
+  const handlePronunciationAttempt = useCallback((term: Term, result: 'good' | 'needs-practice', mode: 'recording' | 'tone-drill' | 'listening', feedback = '') => {
+    const nextProgress = ratePronunciation(term, result, progress, mode, feedback);
+    const review: ReviewEvent = {
+      termId: termId(term),
+      attempt: term.simplified,
+      validationResult: result === 'good' ? 'correct' : 'incorrect',
+      selfRating: result === 'good' ? 'got-it' : 'needs-review',
+      reviewedAt: Date.now(),
+      nextDueAt: getProgress(term, nextProgress).dueAt,
+      kind: 'pronunciation',
+      pronunciationResult: result,
+      feedback,
+    };
+
+    setProgress(nextProgress);
+    persistReview(review, nextProgress);
+  }, [persistReview, progress]);
 
   const dueCount = getDueCount(filteredTerms, progress);
   const masteredCount = getMasteredCount(filteredTerms, progress);
@@ -203,7 +229,7 @@ export default function App() {
         <section className="panel progress-tools" aria-label="Progress import and export tools">
           <div>
             <h2>Progress portability</h2>
-            <p>{syncStatus} Export your review history as JSON for backup or CSV for analysis.</p>
+            <p>{syncStatus} Export vocabulary recall and pronunciation attempts as JSON for backup or CSV for analysis.</p>
           </div>
           <div className="action-row">
             <button className="btn btn-neutral" onClick={handleExportJson} type="button">Download JSON</button>
@@ -227,7 +253,7 @@ export default function App() {
           }}
         />
       </main>
-      <footer className="footer">Anonymous progress is cached locally; signed-in learners sync through /api/progress, /api/reviews, and /api/progress/:termId.</footer>
+      <footer className="footer">Anonymous vocabulary and pronunciation progress is cached locally; signed-in learners sync through /api/progress, /api/reviews, /api/progress/:termId, and optional /api/pronunciation/score.</footer>
     </>
   );
 }

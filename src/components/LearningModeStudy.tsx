@@ -10,25 +10,17 @@ import {
   type LearningModeId,
   type StudyRoute,
 } from '../lib/learningModes';
+import { buildToneDrills, formatPinyin, getTonePattern, type PinyinDisplayMode } from '../lib/pronunciation';
 import type { Term } from '../lib/studySession';
 import { getCategoryName, getExampleSentences } from '../lib/studySession';
+import { AudioPlayButton } from './AudioPlayButton';
+import { PinyinDisplayToggle } from './PinyinDisplayToggle';
+import { PronunciationRecorder } from './PronunciationRecorder';
 
 interface LearningModeStudyProps {
   route: StudyRoute;
   terms: readonly Term[];
-}
-
-function supportsSpeech() {
-  return typeof window !== 'undefined' && 'speechSynthesis' in window && typeof SpeechSynthesisUtterance !== 'undefined';
-}
-
-function speakTerm(term: Term) {
-  if (!supportsSpeech()) return;
-  window.speechSynthesis.cancel();
-  const utterance = new SpeechSynthesisUtterance(term.simplified);
-  utterance.lang = 'zh-CN';
-  utterance.rate = 0.78;
-  window.speechSynthesis.speak(utterance);
+  onPronunciationAttempt: (term: Term, result: 'good' | 'needs-practice', mode: 'recording' | 'tone-drill' | 'listening', feedback?: string) => void;
 }
 
 function ModeButton({ active, label, onClick }: { active: boolean; label: string; onClick: () => void }) {
@@ -39,16 +31,19 @@ function ModeButton({ active, label, onClick }: { active: boolean; label: string
   );
 }
 
-export function LearningModeStudy({ route, terms }: LearningModeStudyProps) {
+export function LearningModeStudy({ onPronunciationAttempt, route, terms }: LearningModeStudyProps) {
   const routeModes = useMemo(() => getModesForRoute(route), [route]);
   const [activeMode, setActiveMode] = useState<LearningModeId>(routeModes[0]?.id ?? 'recognition');
   const [termIndex, setTermIndex] = useState(0);
   const [answer, setAnswer] = useState('');
   const [revealed, setRevealed] = useState(false);
   const [selectedOption, setSelectedOption] = useState('');
+  const [pinyinMode, setPinyinMode] = useState<PinyinDisplayMode>('tone-marks');
   const currentTerm = getTermAt(terms, termIndex);
   const example = currentTerm ? getExampleSentences(currentTerm)[0] : null;
   const activeModeConfig = LEARNING_MODES.find((mode) => mode.id === activeMode);
+  const toneDrills = useMemo(() => buildToneDrills(terms), [terms]);
+  const activeToneDrill = toneDrills[termIndex % Math.max(1, toneDrills.length)] ?? null;
 
   useEffect(() => {
     const nextMode = routeModes[0]?.id ?? 'recognition';
@@ -104,7 +99,7 @@ export function LearningModeStudy({ route, terms }: LearningModeStudyProps) {
 
           {activeMode === 'recognition' ? (
             <>
-              <div className="prompt-box compact"><div className="prompt-label">What does this mean?</div><div className="prompt-term cn">{currentTerm.simplified}</div><div>{currentTerm.pinyin}</div></div>
+              <div className="prompt-box compact"><div className="prompt-label">What does this mean?</div><div className="prompt-term cn">{currentTerm.simplified}</div><PinyinDisplayToggle mode={pinyinMode} onChange={setPinyinMode} /><div>{formatPinyin(currentTerm.pinyin, pinyinMode)}</div></div>
               <div className="option-grid">
                 {recognitionOptions.map((option) => (
                   <button className={`option-btn ${selectedOption === option ? 'selected' : ''}`} key={option} onClick={() => setSelectedOption(option)} type="button">{option}</button>
@@ -122,7 +117,7 @@ export function LearningModeStudy({ route, terms }: LearningModeStudyProps) {
 
           {activeMode === 'pinyin' ? (
             <>
-              <div className="prompt-box compact"><div className="prompt-label">Add tone-marked pinyin</div><div className="prompt-term cn">{currentTerm.simplified}</div></div>
+              <div className="prompt-box compact"><div className="prompt-label">Add tone-marked pinyin</div><div className="prompt-term cn">{currentTerm.simplified}</div><PinyinDisplayToggle mode={pinyinMode} onChange={setPinyinMode} /></div>
               <input className="mode-input" onChange={(event) => setAnswer(event.target.value)} placeholder="Example: Chǎnpǐn lùxiàntú" value={answer} />
             </>
           ) : null}
@@ -131,8 +126,8 @@ export function LearningModeStudy({ route, terms }: LearningModeStudyProps) {
             <>
               <div className="listening-box">
                 {currentTerm.audioUrl ? <audio controls src={currentTerm.audioUrl}>Audio playback is unavailable.</audio> : null}
-                <button className="audio-btn" onClick={() => speakTerm(currentTerm)} type="button">▶ Play Mandarin</button>
-                <p>{currentTerm.audioUrl ? 'Use the recorded audio, or replay with the browser Mandarin voice.' : supportsSpeech() ? 'Uses your browser’s Mandarin speech voice.' : 'Speech playback is unavailable in this browser; use the visible prompt as fallback.'}</p>
+                <AudioPlayButton audioUrl={currentTerm.audioUrl} text={currentTerm.simplified} />
+                <p>Use recorded audio when available, otherwise the browser Mandarin speech voice is used as a fallback.</p>
               </div>
               <div className="option-grid">
                 {listeningOptions.map((option) => (
@@ -140,7 +135,33 @@ export function LearningModeStudy({ route, terms }: LearningModeStudyProps) {
                 ))}
               </div>
               <input className="mode-input" onChange={(event) => setAnswer(event.target.value)} placeholder="Or type the Mandarin term you heard" value={answer} />
+              <PronunciationRecorder onAttempt={(result, note) => onPronunciationAttempt(currentTerm, result, 'recording', note)} promptText={currentTerm.simplified} termId={currentTerm.id} />
             </>
+          ) : null}
+
+          {activeMode === 'tone-drill' ? (
+            activeToneDrill ? (
+              <div className="tone-drill-box">
+                <h3>{activeToneDrill.label}</h3>
+                <p>{activeToneDrill.hint}</p>
+                <div className="tone-pattern">Pattern: {activeToneDrill.pattern}</div>
+                <div className="tone-term-grid">
+                  {activeToneDrill.terms.slice(0, 6).map((toneTerm) => (
+                    <div className="tone-term-card" key={toneTerm.id}>
+                      <div className="cn">{toneTerm.simplified}</div>
+                      <div>{toneTerm.english}</div>
+                      <div>{formatPinyin(toneTerm.pinyin, pinyinMode)}</div>
+                      <AudioPlayButton audioUrl={toneTerm.audioUrl} label="Play" text={toneTerm.simplified} />
+                      <div className="recorder-actions">
+                        <button className="tone-rate good" onClick={() => onPronunciationAttempt(toneTerm, 'good', 'tone-drill', `Matched tone pattern ${getTonePattern(toneTerm.pinyin)}`)} type="button">Good</button>
+                        <button className="tone-rate practice" onClick={() => onPronunciationAttempt(toneTerm, 'needs-practice', 'tone-drill', `Practice tone pattern ${getTonePattern(toneTerm.pinyin)}`)} type="button">Practice</button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <PinyinDisplayToggle mode={pinyinMode} onChange={setPinyinMode} />
+              </div>
+            ) : <div className="completion visible"><h3>No tone-drill groups yet</h3><p>Add more terms with shared tone patterns to unlock this drill.</p></div>
           ) : null}
 
           {activeMode === 'sentence' ? (
@@ -202,10 +223,10 @@ export function LearningModeStudy({ route, terms }: LearningModeStudyProps) {
 
           <div className={`answer-panel ${revealed ? 'visible' : ''}`}>
             <div className="answer-line"><span className="label">English</span><span className="value">{currentTerm.english}</span></div>
-            <div className="answer-line"><span className="label">Mandarin</span><span className="value cn">{currentTerm.simplified}</span></div>
-            <div className="answer-line"><span className="label">Pinyin</span><span className="value">{currentTerm.pinyin}</span></div>
+            <div className="answer-line"><span className="label">Mandarin</span><span className="value cn mandarin-with-audio">{currentTerm.simplified}<AudioPlayButton audioUrl={currentTerm.audioUrl} label="Play term" text={currentTerm.simplified} /></span></div>
+            <div className="answer-line"><span className="label">Pinyin</span><span className="value"><PinyinDisplayToggle mode={pinyinMode} onChange={setPinyinMode} />{formatPinyin(currentTerm.pinyin, pinyinMode)}</span></div>
             <div className="answer-line"><span className="label">Model workplace line</span><span className="value">{responseTemplate}</span></div>
-            {example ? <div className="example-box"><div className="en">{example.english}</div><div className="zh">{example.chinese}</div><div className="pinyin">{example.pinyin}</div></div> : null}
+            {example ? <div className="example-box"><div className="en">{example.english}</div><div className="zh">{example.chinese}</div><div className="pinyin">{formatPinyin(example.pinyin, pinyinMode)}</div></div> : null}
           </div>
         </div>
       ) : (
