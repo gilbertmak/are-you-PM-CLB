@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
+import { validateAttempt } from '../lib/answerValidation';
+import type { AttemptValidationResult } from '../lib/answerValidation';
 import type { Category, Term } from '../lib/studySession';
 import { getCategoryName, getExampleSentences } from '../lib/studySession';
 import { StudyStats } from './StudyStats';
@@ -11,7 +13,7 @@ interface FlashcardStudyProps {
   nextReviewLabel: string;
   reviewedCount: number;
   sessionCorrect: number;
-  onRate: (gotIt: boolean) => void;
+  onRate: (gotIt: boolean, validation?: AttemptValidationResult) => void;
   onRefreshDeck: () => void;
 }
 
@@ -33,6 +35,7 @@ export function FlashcardStudy({
   const currentTerm = deck[currentIndex] ?? null;
   const examples = useMemo(() => (currentTerm ? getExampleSentences(currentTerm) : []), [currentTerm]);
   const example = examples[exampleIndex] ?? examples[0] ?? null;
+  const validation = useMemo(() => (currentTerm ? validateAttempt(currentTerm, attempt) : null), [attempt, currentTerm]);
 
   useEffect(() => {
     setAttempt('');
@@ -50,7 +53,7 @@ export function FlashcardStudy({
       const activeTag = document.activeElement?.tagName.toLowerCase() ?? '';
       const typing = activeTag === 'textarea' || activeTag === 'input';
 
-      if (event.key === 'Enter' && !event.shiftKey && !revealed && attempt.trim()) {
+      if (event.key === 'Enter' && !event.shiftKey && !revealed) {
         event.preventDefault();
         setRevealed(true);
         return;
@@ -58,13 +61,13 @@ export function FlashcardStudy({
 
       if (!revealed) return;
       if (typing && (event.key === 'ArrowLeft' || event.key === 'ArrowRight')) event.preventDefault();
-      if (event.key === 'ArrowLeft') onRate(false);
-      if (event.key === 'ArrowRight') onRate(true);
+      if (event.key === 'ArrowLeft') onRate(false, validation ?? undefined);
+      if (event.key === 'ArrowRight') onRate(true, validation ?? undefined);
     };
 
     window.addEventListener('keydown', handleKeydown);
     return () => window.removeEventListener('keydown', handleKeydown);
-  }, [attempt, onRate, revealed]);
+  }, [onRate, revealed, validation]);
 
   const sessionLabel = deck.length ? `${Math.min(currentIndex + 1, deck.length)} / ${deck.length}` : '0 / 0';
   const completionText = deck.length
@@ -105,14 +108,20 @@ export function FlashcardStudy({
                   placeholder="Type your Mandarin characters, pinyin, or your best guess before revealing the answer"
                   value={attempt}
                 />
-                <div className="attempt-help">Answer attempt is required before reveal. Your text is not graded yet; it primes recall.</div>
+                <div className="attempt-help">Reveal checks characters, tone-mark pinyin, numbered pinyin, and accepted aliases. Self-rating remains your override.</div>
               </div>
               <div className="action-row">
-                <button className="btn btn-neutral" disabled={!attempt.trim() || revealed} onClick={() => setRevealed(true)} type="button">
+                <button className="btn btn-neutral" disabled={revealed} onClick={() => setRevealed(true)} type="button">
                   Reveal answer
                 </button>
                 <button className="btn btn-refresh" onClick={onRefreshDeck} type="button">Refresh study deck</button>
               </div>
+              {revealed && validation ? (
+                <div className={`attempt-feedback ${validation.state}`}>
+                  <div className="attempt-feedback-label">Attempt check · {validation.state.replace(/-/g, ' ')}</div>
+                  <div>{validation.feedback}</div>
+                </div>
+              ) : null}
               <div className={`answer-panel ${revealed ? 'visible' : ''}`}>
                 <div className="answer-line"><span className="label">Mandarin</span><span className="value cn">{currentTerm.simplified}</span></div>
                 {currentTerm.traditional ? <div className="answer-line"><span className="label">Traditional</span><span className="value cn">{currentTerm.traditional}</span></div> : null}
@@ -129,11 +138,11 @@ export function FlashcardStudy({
               </div>
               <div className={`swipe-row ${revealed ? 'visible' : ''}`}>
                 <div>
-                  <button aria-label="Not confident" className="swipe-btn swipe-left" onClick={() => onRate(false)} type="button">←</button>
+                  <button aria-label="Not confident" className="swipe-btn swipe-left" onClick={() => onRate(false, validation ?? undefined)} type="button">←</button>
                   <div className="swipe-caption">Need review</div>
                 </div>
                 <div>
-                  <button aria-label="Got it right" className="swipe-btn swipe-right" onClick={() => onRate(true)} type="button">→</button>
+                  <button aria-label="Got it right" className="swipe-btn swipe-right" onClick={() => onRate(true, validation ?? undefined)} type="button">→</button>
                   <div className="swipe-caption">Got it</div>
                 </div>
               </div>
