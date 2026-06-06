@@ -5,15 +5,7 @@ import { FlashcardStudy } from './components/FlashcardStudy';
 import { GlossaryTable } from './components/GlossaryTable';
 import { SearchControls } from './components/SearchControls';
 import { terms } from './data/terms';
-import {
-  createProgressApi,
-  exportProgressCsv,
-  exportProgressJson,
-  importProgress,
-  readCachedProgress,
-  type ProgressSnapshot,
-  type ReviewEvent,
-} from './lib/persistence';
+import type { AttemptValidationResult } from './lib/answerValidation';
 import { rateCard } from './lib/spacedRepetition';
 import type { Category, ProgressMap, Term } from './lib/studySession';
 import {
@@ -92,14 +84,11 @@ export default function App() {
     refreshDeck(filteredTerms, progress);
   }, [activeCategory, query]);
 
-  const handleRate = useCallback((gotIt: boolean, attempt: string) => {
+  const handleRate = useCallback((gotIt: boolean, validation?: AttemptValidationResult) => {
     const term = deck[currentIndex];
     if (!term) return;
 
-    const { progress: nextProgress, review } = rateCard(term, gotIt, progress, attempt);
-    const nextState = nextProgress[termId(term)];
-    setProgress(nextProgress);
-    setReviews((currentReviews) => [...currentReviews, review]);
+    setProgress((currentProgress) => rateCard(term, gotIt, currentProgress, validation));
     setSessionReviewed((count) => count + 1);
     if (gotIt) setSessionCorrect((count) => count + 1);
     setCurrentIndex((index) => index + 1);

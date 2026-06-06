@@ -1,4 +1,4 @@
-import type { ReviewEvent } from './persistence';
+import type { AttemptValidationResult } from './answerValidation';
 import type { ProgressMap, ProgressRecord, Term } from './studySession';
 import { getProgress, termId } from './studySession';
 
@@ -36,37 +36,36 @@ export function rateCard(
   term: Term,
   gotIt: boolean,
   progress: ProgressMap,
-  attempt = '',
+  validation?: AttemptValidationResult,
   now = Date.now(),
-): RateCardResult {
-  const id = termId(term);
+): ProgressMap {
   const prev = getProgress(term, progress);
   const next = scheduleFromResult(prev, gotIt, now);
-  const state: ProgressRecord = {
-    termId: id,
-    attempts: (prev.attempts || 0) + 1,
-    correct: (prev.correct || 0) + (gotIt ? 1 : 0),
-    incorrect: (prev.incorrect || 0) + (gotIt ? 0 : 1),
-    streak: next.streak,
-    ease: next.ease,
-    intervalHours: next.intervalHours,
-    dueAt: next.dueAt,
-    lastResult: gotIt ? 'right' : 'left',
-    lastReviewedAt: now,
-  };
+  const history = [
+    ...(prev.history ?? []),
+    {
+      reviewedAt: now,
+      rating: gotIt ? 'right' as const : 'left' as const,
+      validationState: validation?.state,
+      feedback: validation?.feedback,
+      normalizedAttempt: validation?.normalizedAttempt,
+      matchedAgainst: validation?.matchedAgainst,
+    },
+  ].slice(-25);
 
   return {
-    progress: {
-      ...progress,
-      [id]: state,
-    },
-    review: {
-      termId: id,
-      attempt,
-      validationResult: gotIt ? 'correct' : 'incorrect',
-      selfRating: gotIt ? 'got-it' : 'needs-review',
-      reviewedAt: now,
-      nextDueAt: next.dueAt,
+    ...progress,
+    [termId(term)]: {
+      attempts: (prev.attempts || 0) + 1,
+      correct: (prev.correct || 0) + (gotIt ? 1 : 0),
+      incorrect: (prev.incorrect || 0) + (gotIt ? 0 : 1),
+      streak: next.streak,
+      ease: next.ease,
+      intervalHours: next.intervalHours,
+      dueAt: next.dueAt,
+      lastResult: gotIt ? 'right' : 'left',
+      lastReviewedAt: now,
+      history,
     },
   };
 }
