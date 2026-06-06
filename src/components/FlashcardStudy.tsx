@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { Category, Term } from '../lib/studySession';
-import { generateExample, getCategoryName } from '../lib/studySession';
+import { getCategoryName, getExampleSentences } from '../lib/studySession';
 import { StudyStats } from './StudyStats';
 
 interface FlashcardStudyProps {
@@ -28,13 +28,22 @@ export function FlashcardStudy({
 }: FlashcardStudyProps) {
   const [attempt, setAttempt] = useState('');
   const [revealed, setRevealed] = useState(false);
+  const [exampleIndex, setExampleIndex] = useState(0);
+  const [showLiteralBreakdown, setShowLiteralBreakdown] = useState(false);
   const currentTerm = deck[currentIndex] ?? null;
-  const example = useMemo(() => (currentTerm ? generateExample(currentTerm) : null), [currentTerm]);
+  const examples = useMemo(() => (currentTerm ? getExampleSentences(currentTerm) : []), [currentTerm]);
+  const example = examples[exampleIndex] ?? examples[0] ?? null;
 
   useEffect(() => {
     setAttempt('');
     setRevealed(false);
+    setExampleIndex(0);
+    setShowLiteralBreakdown(false);
   }, [currentTerm]);
+
+  useEffect(() => {
+    if (exampleIndex >= examples.length) setExampleIndex(0);
+  }, [exampleIndex, examples.length]);
 
   useEffect(() => {
     const handleKeydown = (event: KeyboardEvent) => {
