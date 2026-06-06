@@ -108,6 +108,7 @@ export function FlashcardStudy({
               </div>
               <div className="attempt-box">
                 <textarea
+                  aria-label="Mandarin answer attempt"
                   onChange={(event) => setAttempt(event.target.value)}
                   placeholder="Type your Mandarin characters, pinyin, or your best guess before revealing the answer"
                   value={attempt}
@@ -115,10 +116,10 @@ export function FlashcardStudy({
                 <div className="attempt-help">Reveal checks characters, tone-mark pinyin, numbered pinyin, and accepted aliases. Self-rating remains your override.</div>
               </div>
               <div className="action-row">
-                <button className="btn btn-neutral" disabled={revealed} onClick={() => setRevealed(true)} type="button">
+                <button aria-label="Reveal flashcard answer" className="btn btn-neutral" disabled={revealed} onClick={() => setRevealed(true)} type="button">
                   Reveal answer
                 </button>
-                <button className="btn btn-refresh" onClick={onRefreshDeck} type="button">Refresh study deck</button>
+                <button aria-label="Refresh flashcard study deck" className="btn btn-refresh" onClick={onRefreshDeck} type="button">Refresh study deck</button>
               </div>
               {revealed && validation ? (
                 <div className={`attempt-feedback ${validation.state}`}>
@@ -142,11 +143,11 @@ export function FlashcardStudy({
               </div>
               <div className={`swipe-row ${revealed ? 'visible' : ''}`}>
                 <div>
-                  <button aria-label="Not confident" className="swipe-btn swipe-left" onClick={() => onRate(false, validation ?? undefined)} type="button">←</button>
+                  <button aria-label="Mark flashcard as not confident and schedule more review" className="swipe-btn swipe-left" onClick={() => onRate(false, validation ?? undefined)} type="button">←</button>
                   <div className="swipe-caption">Need review</div>
                 </div>
                 <div>
-                  <button aria-label="Got it right" className="swipe-btn swipe-right" onClick={() => onRate(true, validation ?? undefined)} type="button">→</button>
+                  <button aria-label="Mark flashcard as got it right and schedule later review" className="swipe-btn swipe-right" onClick={() => onRate(true, validation ?? undefined)} type="button">→</button>
                   <div className="swipe-caption">Got it</div>
                 </div>
               </div>

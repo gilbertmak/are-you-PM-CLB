@@ -8,7 +8,8 @@ import { SearchControls } from './components/SearchControls';
 import { StudyNav } from './components/StudyNav';
 import { terms } from './data/terms';
 import type { AttemptValidationResult } from './lib/answerValidation';
-import { rateCard } from './lib/spacedRepetition';
+import { normalizeRoute, type StudyRoute } from './lib/learningModes';
+import { rateCard, ratePronunciation } from './lib/spacedRepetition';
 import {
   createProgressApi,
   exportProgressCsv,
@@ -65,6 +66,7 @@ export default function App() {
   const [sessionReviewed, setSessionReviewed] = useState(0);
   const [sessionCorrect, setSessionCorrect] = useState(0);
   const [syncStatus, setSyncStatus] = useState('Progress cache ready.');
+  const [activeRoute, setActiveRoute] = useState<StudyRoute>(getInitialRoute);
 
   const filteredTerms = useMemo(() => getFilteredTerms(terms, filters, query, progress), [filters, progress, query]);
 
@@ -170,6 +172,12 @@ export default function App() {
   const masteredCount = getMasteredCount(filteredTerms, progress);
   const nextReviewLabel = getNextReviewLabel(filteredTerms, progress);
   const snapshot = createSnapshot(progress, reviews);
+  const isStudyRoute = activeRoute === '/' || activeRoute === '/study' || activeRoute.startsWith('/study/');
+  const isFlashcardRoute = activeRoute === '/' || activeRoute === '/study' || activeRoute === '/study/flashcards';
+  const isGlossaryRoute = activeRoute === '/' || activeRoute === '/glossary';
+  const isProgressRoute = activeRoute === '/' || activeRoute === '/progress';
+  const termRouteId = activeRoute.startsWith('/terms/') ? decodeURIComponent(activeRoute.replace('/terms/', '')) : '';
+  const routedTerm = termRouteId ? terms.find((term) => term.id === termRouteId) : undefined;
 
   const handleExportJson = () => download('pm-mandarin-progress.json', exportProgressJson(snapshot), 'application/json');
   const handleExportCsv = () => download('pm-mandarin-reviews.csv', exportProgressCsv(snapshot), 'text/csv');
@@ -196,62 +204,108 @@ export default function App() {
       <Banner />
       <main>
         <StudyNav activeRoute={activeRoute} onNavigate={navigateTo} />
-        <CategoryTabs activeCategory={activeCategory} onChange={setActiveCategory} />
-        <SearchControls
-          count={filteredTerms.length}
-          dueCount={dueCount}
-          filters={filters}
-          onFiltersChange={setFilters}
-          onQueryChange={setQuery}
-          onSavedListSelect={(listId) => {
-            if (listId === 'weekly-product-review') {
+        {activeRoute === '/' ? (
+          <section className="panel route-hero" aria-labelledby="home-route-heading">
+            <h1 id="home-route-heading">Production Mandarin PM study workspace</h1>
+            <p>Use the routed glossary, study modes, term detail pages, and progress tools as the static-first foundation for production deployment.</p>
+          </section>
+        ) : null}
+        {routedTerm ? (
+          <section className="panel term-route" aria-labelledby="term-route-heading">
+            <p className="eyebrow">Term detail route</p>
+            <h1 id="term-route-heading">{routedTerm.english}</h1>
+            <p className="term-route-cn">{routedTerm.simplified} · {routedTerm.traditional || routedTerm.simplified} · {routedTerm.pinyin}</p>
+            <p>{routedTerm.usageNote}</p>
+            <ul>
+              {routedTerm.exampleSentences.map((example) => (
+                <li key={`${routedTerm.id}-${example.chinese}`}>{example.english} — {example.chinese}</li>
+              ))}
+            </ul>
+            <button className="btn btn-neutral" onClick={() => navigateTo('/glossary')} type="button">Back to glossary</button>
+          </section>
+        ) : null}
+        {termRouteId && !routedTerm ? (
+          <section className="panel" aria-labelledby="term-not-found-heading">
+            <h1 id="term-not-found-heading">Term not found</h1>
+            <p>No term matches {termRouteId}. Return to the glossary and choose another term.</p>
+            <button className="btn btn-neutral" onClick={() => navigateTo('/glossary')} type="button">Back to glossary</button>
+          </section>
+        ) : null}
+        {(isStudyRoute || isGlossaryRoute) && !termRouteId ? (
+          <>
+            <CategoryTabs activeCategory={filters.category} onChange={(category) => setFilters((current) => ({ ...current, category }))} />
+            <SearchControls
+              count={filteredTerms.length}
+              dueCount={dueCount}
+              filters={filters}
+              onFiltersChange={setFilters}
+              onQueryChange={setQuery}
+              onSavedListSelect={(listId) => {
+                if (listId === 'weekly-product-review') {
+                  setQuery('');
+                  setFilters({ ...DEFAULT_GLOSSARY_FILTERS, domain: 'product', level: 'working', sortBy: 'weakest' });
+                } else {
+                  setQuery('');
+                  setFilters({ ...DEFAULT_GLOSSARY_FILTERS, category: 'ai', scenario: 'ai-product-conversations', sortBy: 'newest' });
+                }
+              }}
+              query={query}
+              scopeLabel={getCategoryName(filters.category)}
+            />
+          </>
+        ) : null}
+        {isStudyRoute && !termRouteId ? (
+          isFlashcardRoute ? (
+            <FlashcardStudy
+              category={filters.category}
+              currentIndex={currentIndex}
+              deck={deck}
+              masteredCount={masteredCount}
+              nextReviewLabel={nextReviewLabel}
+              onRate={handleRate}
+              onRefreshDeck={() => refreshDeck()}
+              reviewedCount={sessionReviewed}
+              sessionCorrect={sessionCorrect}
+            />
+          ) : (
+            <LearningModeStudy route={activeRoute} terms={filteredTerms} onPronunciationAttempt={handlePronunciationAttempt} />
+          )
+        ) : null}
+        {isProgressRoute && !termRouteId ? (
+          <section className="panel progress-tools" aria-labelledby="progress-route-heading">
+            <div>
+              <h2 id="progress-route-heading">Progress portability</h2>
+              <p>{syncStatus} Export vocabulary recall and pronunciation attempts as JSON for backup or CSV for analysis.</p>
+            </div>
+            <div className="progress-summary" aria-label="Progress summary">
+              <span>{Object.keys(progress).length} tracked terms</span>
+              <span>{reviews.length} review events</span>
+              <span>{masteredCount} mastered in current scope</span>
+            </div>
+            <div className="action-row">
+              <button className="btn btn-neutral" onClick={handleExportJson} type="button">Download JSON</button>
+              <button className="btn btn-refresh" onClick={handleExportCsv} type="button">Download CSV</button>
+              <label className="btn btn-import">
+                Import JSON
+                <input accept="application/json" aria-label="Import progress JSON" onChange={handleImportJson} type="file" />
+              </label>
+            </div>
+          </section>
+        ) : null}
+        {isGlossaryRoute && !termRouteId ? (
+          <GlossaryTable
+            terms={filteredTerms}
+            allTerms={terms}
+            progress={progress}
+            onCurriculumSelect={(level) => {
               setQuery('');
-              setFilters({ ...DEFAULT_GLOSSARY_FILTERS, domain: 'product', level: 'working', sortBy: 'weakest' });
-            } else {
-              setQuery('');
-              setFilters({ ...DEFAULT_GLOSSARY_FILTERS, category: 'ai', scenario: 'ai-product-conversations', sortBy: 'newest' });
-            }
-          }}
-          query={query}
-          scopeLabel={getCategoryName(filters.category)}
-        />
-        <FlashcardStudy
-          category={filters.category}
-          currentIndex={currentIndex}
-          deck={deck}
-          masteredCount={masteredCount}
-          nextReviewLabel={nextReviewLabel}
-          onRate={handleRate}
-          onRefreshDeck={() => refreshDeck()}
-          reviewedCount={sessionReviewed}
-          sessionCorrect={sessionCorrect}
-        />
-        <section className="panel progress-tools" aria-label="Progress import and export tools">
-          <div>
-            <h2>Progress portability</h2>
-            <p>{syncStatus} Export vocabulary recall and pronunciation attempts as JSON for backup or CSV for analysis.</p>
-          </div>
-          <div className="action-row">
-            <button className="btn btn-neutral" onClick={handleExportJson} type="button">Download JSON</button>
-            <button className="btn btn-refresh" onClick={handleExportCsv} type="button">Download CSV</button>
-            <label className="btn btn-import">
-              Import JSON
-              <input accept="application/json" onChange={handleImportJson} type="file" />
-            </label>
-          </div>
-        </section>
-        <GlossaryTable
-          terms={filteredTerms}
-          allTerms={terms}
-          progress={progress}
-          onCurriculumSelect={(level) => {
-            setQuery('');
-            if (level === 1) setFilters({ ...DEFAULT_GLOSSARY_FILTERS, category: 'pm', domain: 'product', level: 'beginner' });
-            if (level === 2) setFilters({ ...DEFAULT_GLOSSARY_FILTERS, domain: 'meetings', sortBy: 'alphabetical' });
-            if (level === 3) setFilters({ ...DEFAULT_GLOSSARY_FILTERS, category: 'ai', scenario: 'ai-product-conversations' });
-            if (level === 4) setFilters({ ...DEFAULT_GLOSSARY_FILTERS, category: 'rc', scenario: 'risk-escalation' });
-          }}
-        />
+              if (level === 1) setFilters({ ...DEFAULT_GLOSSARY_FILTERS, category: 'pm', domain: 'product', level: 'beginner' });
+              if (level === 2) setFilters({ ...DEFAULT_GLOSSARY_FILTERS, domain: 'meetings', sortBy: 'alphabetical' });
+              if (level === 3) setFilters({ ...DEFAULT_GLOSSARY_FILTERS, category: 'ai', scenario: 'ai-product-conversations' });
+              if (level === 4) setFilters({ ...DEFAULT_GLOSSARY_FILTERS, category: 'rc', scenario: 'risk-escalation' });
+            }}
+          />
+        ) : null}
       </main>
       <footer className="footer">Anonymous vocabulary and pronunciation progress is cached locally; signed-in learners sync through /api/progress, /api/reviews, /api/progress/:termId, and optional /api/pronunciation/score.</footer>
     </>

@@ -14,6 +14,7 @@ export function StudyNav({ activeRoute, onNavigate }: StudyNavProps) {
           key={route.path}
           onClick={() => onNavigate(route.path)}
           type="button"
+          aria-current={activeRoute === route.path ? 'page' : undefined}
         >
           <span>{route.label}</span>
           <small>{route.description}</small>

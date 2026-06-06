@@ -69,6 +69,7 @@ export function GlossaryTable({ terms, allTerms, progress, onCurriculumSelect }:
 
       <div className="table-shell">
         <table>
+          <caption>Mandarin PM glossary terms with translations, pinyin, learning progress, and detail controls.</caption>
           <thead>
             <tr>
               <th>English</th>
@@ -95,7 +96,7 @@ export function GlossaryTable({ terms, allTerms, progress, onCurriculumSelect }:
                   <td>{term.level}</td>
                   <td>{isMastered(record) ? 'Mastered' : isDue(record) ? 'Due now' : `Due ${formatDueDate(record.dueAt)}`}</td>
                   <td><Badge category={term.category} /></td>
-                  <td><button className="detail-link" onClick={() => setSelectedTermId(term.id)} type="button">Open</button></td>
+                  <td><button aria-label={`Open details for ${term.english}`} className="detail-link" onClick={() => setSelectedTermId(term.id)} type="button">Open</button> <a className="term-route-link" href={`/terms/${encodeURIComponent(term.id)}`}>Route</a></td>
                 </tr>
               );
             })}
