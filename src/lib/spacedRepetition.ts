@@ -1,3 +1,4 @@
+import type { AttemptValidationResult } from './answerValidation';
 import type { ProgressMap, ProgressRecord, Term } from './studySession';
 import { getProgress, termId } from './studySession';
 
@@ -19,9 +20,26 @@ export function scheduleFromResult(prev: ProgressRecord, gotIt: boolean, now = D
   return { ease, streak, intervalHours, dueAt: now + intervalHours * 3600 * 1000 };
 }
 
-export function rateCard(term: Term, gotIt: boolean, progress: ProgressMap, now = Date.now()): ProgressMap {
+export function rateCard(
+  term: Term,
+  gotIt: boolean,
+  progress: ProgressMap,
+  validation?: AttemptValidationResult,
+  now = Date.now(),
+): ProgressMap {
   const prev = getProgress(term, progress);
   const next = scheduleFromResult(prev, gotIt, now);
+  const history = [
+    ...(prev.history ?? []),
+    {
+      reviewedAt: now,
+      rating: gotIt ? 'right' as const : 'left' as const,
+      validationState: validation?.state,
+      feedback: validation?.feedback,
+      normalizedAttempt: validation?.normalizedAttempt,
+      matchedAgainst: validation?.matchedAgainst,
+    },
+  ].slice(-25);
 
   return {
     ...progress,
@@ -35,6 +53,7 @@ export function rateCard(term: Term, gotIt: boolean, progress: ProgressMap, now 
       dueAt: next.dueAt,
       lastResult: gotIt ? 'right' : 'left',
       lastReviewedAt: now,
+      history,
     },
   };
 }

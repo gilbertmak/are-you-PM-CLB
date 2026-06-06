@@ -27,7 +27,17 @@ export interface Term {
   exampleSentences: readonly ExampleSentence[];
   commonMistakes: readonly string[];
   relatedTerms: readonly string[];
+  acceptedAliases?: readonly string[];
   audioUrl: string;
+}
+
+export interface ProgressHistoryEntry {
+  reviewedAt: number;
+  rating: 'right' | 'left';
+  validationState?: 'exact' | 'close-pinyin' | 'character-mismatch' | 'empty-or-unrelated';
+  feedback?: string;
+  normalizedAttempt?: string;
+  matchedAgainst?: string;
 }
 
 export interface ProgressRecord {
@@ -40,6 +50,7 @@ export interface ProgressRecord {
   dueAt: number;
   lastResult: 'new' | 'right' | 'left';
   lastReviewedAt?: number;
+  history?: ProgressHistoryEntry[];
 }
 
 export type ProgressMap = Record<string, ProgressRecord>;
@@ -81,6 +92,7 @@ export function filterTerms(terms: readonly Term[], category: Category, query: s
       term.simplified,
       term.traditional,
       term.pinyin,
+      ...(term.acceptedAliases ?? []),
       term.category,
       term.level,
       term.domain,
@@ -161,4 +173,8 @@ export function generateExample(term: Term) {
     chinese: `在工作场景中，团队讨论了“${term.simplified}”。`,
     pinyin: `Zài gōngzuò chǎngjǐng zhōng, tuánduì tǎolùn le ${term.pinyin}.`,
   };
+}
+
+export function getExampleSentences(term: Term) {
+  return term.exampleSentences.length ? term.exampleSentences : [generateExample(term)];
 }

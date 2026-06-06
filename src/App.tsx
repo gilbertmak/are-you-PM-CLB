@@ -5,6 +5,7 @@ import { FlashcardStudy } from './components/FlashcardStudy';
 import { GlossaryTable } from './components/GlossaryTable';
 import { SearchControls } from './components/SearchControls';
 import { terms } from './data/terms';
+import type { AttemptValidationResult } from './lib/answerValidation';
 import { rateCard } from './lib/spacedRepetition';
 import type { Category, ProgressMap, Term } from './lib/studySession';
 import {
@@ -52,11 +53,11 @@ export default function App() {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(progress));
   }, [progress]);
 
-  const handleRate = useCallback((gotIt: boolean) => {
+  const handleRate = useCallback((gotIt: boolean, validation?: AttemptValidationResult) => {
     const term = deck[currentIndex];
     if (!term) return;
 
-    setProgress((currentProgress) => rateCard(term, gotIt, currentProgress));
+    setProgress((currentProgress) => rateCard(term, gotIt, currentProgress, validation));
     setSessionReviewed((count) => count + 1);
     if (gotIt) setSessionCorrect((count) => count + 1);
     setCurrentIndex((index) => index + 1);
