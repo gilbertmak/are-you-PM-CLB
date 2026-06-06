@@ -350,118 +350,274 @@
   }
 }
 
-.mandarin-with-audio {
-  align-items: center;
-  display: inline-flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
+.controls-wrap {
+  grid-template-columns: minmax(260px, 1.5fr) repeat(3, minmax(150px, 1fr));
+  align-items: end;
 }
 
-.audio-btn {
-  background: #ecfeff;
-  border: 1px solid #67e8f9;
-  border-radius: 999px;
-  color: #0e7490;
-  cursor: pointer;
-  font-size: 0.8rem;
-  font-weight: 800;
-  padding: 0.35rem 0.65rem;
-}
-
-.audio-btn:hover {
-  background: #cffafe;
-}
-
-.pinyin-toggle,
-.table-tools,
-.recorder-actions {
-  align-items: center;
+.filter-field {
+  color: #7d6a56;
   display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-}
-
-.pinyin-toggle {
-  margin-bottom: 0.35rem;
-}
-
-.pinyin-toggle span {
-  color: #64748b;
+  flex-direction: column;
   font-size: 0.78rem;
   font-weight: 800;
+  gap: 5px;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
 }
 
-.pinyin-toggle button,
-.tone-rate {
-  border: 1px solid #cbd5e1;
+.filter-field select {
+  background: #fff;
+  border: 1px solid #eadfc8;
   border-radius: 999px;
-  cursor: pointer;
-  font-size: 0.78rem;
-  font-weight: 800;
-  padding: 0.35rem 0.6rem;
+  color: #4f3622;
+  min-height: 43px;
+  padding: 10px 14px;
 }
 
-.pinyin-toggle button.active {
-  background: #1d4ed8;
-  border-color: #1d4ed8;
-  color: white;
-}
-
-.table-tools {
-  justify-content: space-between;
-  margin: 1.5rem 0 0.75rem;
-}
-
-.recorder-box,
-.tone-drill-box {
-  background: #f8fafc;
-  border: 1px solid #dbeafe;
+.check-pill,
+.saved-list-row {
+  align-items: center;
+  background: #fff;
+  border: 1px solid #eadfc8;
   border-radius: 18px;
-  margin-top: 1rem;
-  padding: 1rem;
+  color: #7a3b1e;
+  display: flex;
+  gap: 10px;
+  padding: 10px 14px;
 }
 
-.recorder-box audio {
-  display: block;
-  margin-top: 0.75rem;
-  width: 100%;
+.saved-list-row {
+  grid-column: 1 / -1;
+  flex-wrap: wrap;
 }
 
-.tone-pattern {
-  background: #1e293b;
+.list-chip,
+.detail-link,
+.curriculum-card,
+.drawer-close {
+  cursor: pointer;
+  font: inherit;
+}
+
+.list-chip,
+.detail-link {
+  background: #f7efe1;
+  border: 1px solid #e7d2b2;
   border-radius: 999px;
-  color: white;
-  display: inline-block;
+  color: #7a3b1e;
+  font-weight: 800;
+  padding: 7px 11px;
+}
+
+.curriculum-panel,
+.compact-heading {
+  background: #fffdf9;
+  border: 1px solid #efdfc7;
+  border-radius: 22px;
+  box-shadow: 0 10px 24px rgba(0,0,0,0.05);
+  margin-bottom: 18px;
+  padding: 20px;
+}
+
+.curriculum-panel h2,
+.compact-heading h2 {
+  color: #7a3b1e;
+  margin-top: 4px;
+}
+
+.eyebrow {
+  color: #9a866f;
+  font-size: 0.75rem;
   font-weight: 900;
-  letter-spacing: 0.08em;
-  margin: 0.5rem 0 1rem;
-  padding: 0.45rem 0.8rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
 }
 
-.tone-term-grid {
+.curriculum-grid {
   display: grid;
-  gap: 0.8rem;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  margin-top: 16px;
 }
 
-.tone-term-card {
-  background: white;
-  border: 1px solid #e2e8f0;
-  border-radius: 16px;
+.curriculum-card {
+  background: linear-gradient(180deg, #fff 0%, #fff8ed 100%);
+  border: 1px solid #eadfc8;
+  border-radius: 18px;
+  color: #4f3622;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  padding: 16px;
+  text-align: left;
+}
+
+.curriculum-card:hover,
+.list-chip:hover,
+.detail-link:hover {
+  border-color: #c8a96e;
+  transform: translateY(-1px);
+}
+
+.curriculum-card span {
+  color: #7a3b1e;
+  font-size: 0.75rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.curriculum-card small,
+.compact-heading p,
+.muted {
+  color: #7d6a56;
+  line-height: 1.45;
+}
+
+.compact-heading {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.drawer-backdrop {
+  align-items: stretch;
+  background: rgba(22, 52, 80, 0.35);
+  display: flex;
+  inset: 0;
+  justify-content: flex-end;
+  position: fixed;
+  z-index: 10;
+}
+
+.term-drawer {
+  background: #fffdf9;
+  box-shadow: -14px 0 32px rgba(0,0,0,0.18);
+  color: #4f3622;
+  max-width: 520px;
+  overflow: auto;
+  padding: 28px;
+  position: relative;
+  width: min(92vw, 520px);
+}
+
+.drawer-close {
+  background: #f7efe1;
+  border: 1px solid #e7d2b2;
+  border-radius: 999px;
+  color: #7a3b1e;
+  font-size: 1.4rem;
+  height: 36px;
+  position: absolute;
+  right: 18px;
+  top: 18px;
+  width: 36px;
+}
+
+.term-drawer h2 {
+  color: #163450;
+  font-size: 2rem;
+  margin: 8px 42px 12px 0;
+}
+
+.drawer-translation {
+  background: #f9f5ee;
+  border: 1px solid #ecdcc5;
+  border-radius: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 16px;
+}
+
+.drawer-translation span {
+  color: #7a3b1e;
+  font-size: 1.8rem;
+  font-weight: 900;
+}
+
+.drawer-translation small,
+.usage-note {
+  color: #7d6a56;
+}
+
+.usage-note {
+  line-height: 1.55;
+  margin: 14px 0;
+}
+
+.detail-stats {
   display: grid;
-  gap: 0.45rem;
-  padding: 0.9rem;
+  gap: 10px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin: 16px 0;
 }
 
-.tone-rate.good {
-  background: #dcfce7;
-  border-color: #86efac;
-  color: #166534;
+.detail-stats div {
+  background: #fff;
+  border: 1px solid #eadfc8;
+  border-radius: 14px;
+  padding: 10px;
 }
 
-.tone-rate.practice {
-  background: #fee2e2;
-  border-color: #fecaca;
-  color: #991b1b;
+.detail-stats dt {
+  color: #9a866f;
+  font-size: 0.72rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.detail-stats dd {
+  color: #4f3622;
+  font-weight: 800;
+  margin-top: 3px;
+}
+
+.term-drawer section {
+  margin-top: 20px;
+}
+
+.term-drawer h3 {
+  color: #7a3b1e;
+  font-size: 1rem;
+  margin-bottom: 10px;
+}
+
+.token-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.token-row span {
+  background: #fff;
+  border: 1px solid #eadfc8;
+  border-radius: 999px;
+  color: #163450;
+  padding: 7px 10px;
+}
+
+.term-drawer ul {
+  color: #7d6a56;
+  padding-left: 20px;
+}
+
+@media (max-width: 960px) {
+  .controls-wrap,
+  .curriculum-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 680px) {
+  .controls-wrap,
+  .curriculum-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .compact-heading {
+    align-items: flex-start;
+    flex-direction: column;
+  }
 }
