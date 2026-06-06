@@ -94,10 +94,10 @@ export function FlashcardStudy({
                 <span>{deck.length ? `Due cards first · ${deck.length} in this review queue` : 'No cards in queue'}</span>
                 <span>Keyboard: Enter reveal, ← review, → got it</span>
               </div>
-              <span className="prompt-tag">{getCategoryName(currentTerm[3])} prompt</span>
+              <span className="prompt-tag">{getCategoryName(currentTerm.category)} prompt</span>
               <div className="prompt-box">
                 <div className="prompt-label">English term</div>
-                <div className="prompt-term">{currentTerm[0]}</div>
+                <div className="prompt-term">{currentTerm.english}</div>
               </div>
               <div className="attempt-box">
                 <textarea
@@ -114,49 +114,17 @@ export function FlashcardStudy({
                 <button className="btn btn-refresh" onClick={onRefreshDeck} type="button">Refresh study deck</button>
               </div>
               <div className={`answer-panel ${revealed ? 'visible' : ''}`}>
-                <div className="answer-line"><span className="label">Mandarin</span><span className="value cn">{currentTerm[1]}</span></div>
-                <div className="answer-line"><span className="label">Hanyu Pinyin</span><span className="value">{currentTerm[2]}</span></div>
+                <div className="answer-line"><span className="label">Mandarin</span><span className="value cn">{currentTerm.simplified}</span></div>
+                {currentTerm.traditional ? <div className="answer-line"><span className="label">Traditional</span><span className="value cn">{currentTerm.traditional}</span></div> : null}
+                <div className="answer-line"><span className="label">Hanyu Pinyin</span><span className="value">{currentTerm.pinyin}</span></div>
+                <div className="answer-line"><span className="label">Domain</span><span className="value">{currentTerm.domain} · {currentTerm.level}</span></div>
+                <div className="answer-line"><span className="label">Usage</span><span className="value">{currentTerm.usageNote}</span></div>
                 <div className="example-box">
-                  <div className="example-header">
-                    <div>
-                      <div className="example-label">Curated product-context example</div>
-                      <div className="example-meta">
-                        <span>{example?.type.replace(/_/g, ' ')}</span>
-                        <span>{example?.scenario.replace(/_/g, ' ')}</span>
-                        <span>{examples.length ? `${exampleIndex + 1} / ${examples.length}` : '0 / 0'}</span>
-                      </div>
-                    </div>
-                    <div className="example-controls" aria-label="Example sentence controls">
-                      <button
-                        className="mini-btn"
-                        disabled={examples.length <= 1}
-                        onClick={() => setExampleIndex((index) => (index + examples.length - 1) % examples.length)}
-                        type="button"
-                      >
-                        Previous
-                      </button>
-                      <button
-                        className="mini-btn"
-                        disabled={examples.length <= 1}
-                        onClick={() => setExampleIndex((index) => (index + 1) % examples.length)}
-                        type="button"
-                      >
-                        Next
-                      </button>
-                    </div>
-                  </div>
-                  <div className="en">{example?.en}</div>
-                  <div className="zh">{example?.zh}</div>
+                  <div className="example-label">Work-context example</div>
+                  <div className="en">{example?.english}</div>
+                  <div className="zh">{example?.chinese}</div>
                   <div className="pinyin">{example?.pinyin}</div>
-                  <label className="literal-toggle">
-                    <input
-                      checked={showLiteralBreakdown}
-                      onChange={(event) => setShowLiteralBreakdown(event.target.checked)}
-                      type="checkbox"
-                    />
-                    Show literal breakdown
-                  </label>
-                  {showLiteralBreakdown ? <div className="literal-breakdown">{example?.literalBreakdown}</div> : null}
+                  {example?.literalGloss ? <div className="literal">Literal: {example.literalGloss}</div> : null}
                 </div>
               </div>
               <div className={`swipe-row ${revealed ? 'visible' : ''}`}>
