@@ -15,17 +15,25 @@ export function GlossaryTable({ terms }: { terms: readonly Term[] }) {
             <tr>
               <th>English</th>
               <th>中文</th>
+              <th>Traditional</th>
               <th>Pinyin</th>
+              <th>Domain</th>
+              <th>Level</th>
               <th>Group</th>
+              <th>Usage</th>
             </tr>
           </thead>
           <tbody>
-            {terms.map(([english, mandarin, pinyin, category], index) => (
-              <tr key={`${category}-${english}`}>
-                <td><span className="row-num">{index + 1}.</span>{english}</td>
-                <td>{mandarin}</td>
-                <td>{pinyin}</td>
-                <td><Badge category={category} /></td>
+            {terms.map((term, index) => (
+              <tr key={term.id}>
+                <td><span className="row-num">{index + 1}.</span>{term.english}</td>
+                <td>{term.simplified}</td>
+                <td>{term.traditional || '—'}</td>
+                <td>{term.pinyin}</td>
+                <td>{term.domain}</td>
+                <td>{term.level}</td>
+                <td><Badge category={term.category} /></td>
+                <td>{term.usageNote}</td>
               </tr>
             ))}
           </tbody>
