@@ -6,6 +6,7 @@ export type LearningModeId =
   | 'recognition'
   | 'production'
   | 'pinyin'
+  | 'tone-drill'
   | 'listening'
   | 'sentence'
   | 'scenario'
@@ -22,7 +23,7 @@ export interface LearningModeConfig {
 
 export const STUDY_ROUTES: Array<{ path: StudyRoute; label: string; description: string }> = [
   { path: '/study/flashcards', label: 'Flashcards', description: 'Recognition, production, pinyin, and sentence drills.' },
-  { path: '/study/listening', label: 'Listening', description: 'Hear workplace Mandarin and identify the term.' },
+  { path: '/study/listening', label: 'Listening', description: 'Hear workplace Mandarin, drill tone patterns, and record pronunciation.' },
   { path: '/study/scenarios', label: 'Scenarios', description: 'Practice meetings, stakeholder responses, and role-play.' },
   { path: '/glossary', label: 'Glossary', description: 'Search the full Mandarin PM vocabulary table.' },
 ];
@@ -55,6 +56,13 @@ export const LEARNING_MODES: LearningModeConfig[] = [
     route: '/study/listening',
     shortLabel: 'Listening',
     description: 'Play audio or browser speech and ask learners to identify or type the term.',
+  },
+  {
+    id: 'tone-drill',
+    label: 'Tone-drill mode',
+    route: '/study/listening',
+    shortLabel: 'Tone drill',
+    description: 'Practice confusing tone-number patterns across similar workplace terms.',
   },
   {
     id: 'sentence',

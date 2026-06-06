@@ -1,4 +1,5 @@
 import type { AttemptValidationResult } from './answerValidation';
+import type { ReviewEvent } from './persistence';
 import type { ProgressMap, ProgressRecord, Term } from './studySession';
 import { getProgress, termId } from './studySession';
 
@@ -66,6 +67,36 @@ export function rateCard(
       lastResult: gotIt ? 'right' : 'left',
       lastReviewedAt: now,
       history,
+      pronunciationAttempts: prev.pronunciationAttempts || 0,
+      pronunciationGood: prev.pronunciationGood || 0,
+      pronunciationNeedsPractice: prev.pronunciationNeedsPractice || 0,
+      pronunciationHistory: prev.pronunciationHistory,
+    },
+  };
+}
+
+export function ratePronunciation(
+  term: Term,
+  result: 'good' | 'needs-practice',
+  progress: ProgressMap,
+  mode: 'recording' | 'tone-drill' | 'listening',
+  feedback = '',
+  now = Date.now(),
+): ProgressMap {
+  const prev = getProgress(term, progress);
+  const pronunciationHistory = [
+    ...(prev.pronunciationHistory ?? []),
+    { attemptedAt: now, result, feedback, mode },
+  ].slice(-25);
+
+  return {
+    ...progress,
+    [termId(term)]: {
+      ...prev,
+      pronunciationAttempts: (prev.pronunciationAttempts || 0) + 1,
+      pronunciationGood: (prev.pronunciationGood || 0) + (result === 'good' ? 1 : 0),
+      pronunciationNeedsPractice: (prev.pronunciationNeedsPractice || 0) + (result === 'needs-practice' ? 1 : 0),
+      pronunciationHistory,
     },
   };
 }

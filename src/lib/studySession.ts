@@ -9,6 +9,7 @@ export interface ExampleSentence {
   chinese: string;
   pinyin: string;
   literalGloss?: string;
+  audioUrl: string;
 }
 
 export interface Term {
@@ -40,6 +41,14 @@ export interface ProgressHistoryEntry {
   matchedAgainst?: string;
 }
 
+export interface PronunciationHistoryEntry {
+  attemptedAt: number;
+  result: 'good' | 'needs-practice';
+  feedback?: string;
+  mode: 'recording' | 'tone-drill' | 'listening';
+}
+
+
 export interface ProgressRecord {
   termId?: string;
   attempts: number;
@@ -52,6 +61,10 @@ export interface ProgressRecord {
   lastResult: 'new' | 'right' | 'left';
   lastReviewedAt?: number;
   history?: ProgressHistoryEntry[];
+  pronunciationAttempts: number;
+  pronunciationGood: number;
+  pronunciationNeedsPractice: number;
+  pronunciationHistory?: PronunciationHistoryEntry[];
 }
 
 export type ProgressMap = Record<string, ProgressRecord>;
@@ -79,6 +92,9 @@ export function getProgress(term: Term, progress: ProgressMap): ProgressRecord {
     intervalHours: 0,
     dueAt: 0,
     lastResult: 'new',
+    pronunciationAttempts: 0,
+    pronunciationGood: 0,
+    pronunciationNeedsPractice: 0,
   };
 }
 
@@ -177,9 +193,6 @@ export function generateExample(term: Term) {
     english: `In a work context, the team discussed "${term.english}".`,
     chinese: `在工作场景中，团队讨论了“${term.simplified}”。`,
     pinyin: `Zài gōngzuò chǎngjǐng zhōng, tuánduì tǎolùn le ${term.pinyin}.`,
+    audioUrl: '',
   };
-}
-
-export function getExampleSentences(term: Term) {
-  return term.exampleSentences.length ? term.exampleSentences : [generateExample(term)];
 }

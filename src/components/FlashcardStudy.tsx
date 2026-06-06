@@ -1,8 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
 import { validateAttempt } from '../lib/answerValidation';
+import { formatPinyin, type PinyinDisplayMode } from '../lib/pronunciation';
 import type { AttemptValidationResult } from '../lib/answerValidation';
 import type { Category, Term } from '../lib/studySession';
 import { getCategoryName, getExampleSentences } from '../lib/studySession';
+import { AudioPlayButton } from './AudioPlayButton';
+import { PinyinDisplayToggle } from './PinyinDisplayToggle';
 import { StudyStats } from './StudyStats';
 
 interface FlashcardStudyProps {
@@ -32,6 +35,7 @@ export function FlashcardStudy({
   const [revealed, setRevealed] = useState(false);
   const [exampleIndex, setExampleIndex] = useState(0);
   const [showLiteralBreakdown, setShowLiteralBreakdown] = useState(false);
+  const [pinyinMode, setPinyinMode] = useState<PinyinDisplayMode>('tone-marks');
   const currentTerm = deck[currentIndex] ?? null;
   const examples = useMemo(() => (currentTerm ? getExampleSentences(currentTerm) : []), [currentTerm]);
   const example = examples[exampleIndex] ?? examples[0] ?? null;
@@ -123,16 +127,16 @@ export function FlashcardStudy({
                 </div>
               ) : null}
               <div className={`answer-panel ${revealed ? 'visible' : ''}`}>
-                <div className="answer-line"><span className="label">Mandarin</span><span className="value cn">{currentTerm.simplified}</span></div>
+                <div className="answer-line"><span className="label">Mandarin</span><span className="value cn mandarin-with-audio">{currentTerm.simplified}<AudioPlayButton audioUrl={currentTerm.audioUrl} label="Play term" text={currentTerm.simplified} /></span></div>
                 {currentTerm.traditional ? <div className="answer-line"><span className="label">Traditional</span><span className="value cn">{currentTerm.traditional}</span></div> : null}
-                <div className="answer-line"><span className="label">Hanyu Pinyin</span><span className="value">{currentTerm.pinyin}</span></div>
+                <div className="answer-line"><span className="label">Hanyu Pinyin</span><span className="value"><PinyinDisplayToggle mode={pinyinMode} onChange={setPinyinMode} />{formatPinyin(currentTerm.pinyin, pinyinMode)}</span></div>
                 <div className="answer-line"><span className="label">Domain</span><span className="value">{currentTerm.domain} · {currentTerm.level}</span></div>
                 <div className="answer-line"><span className="label">Usage</span><span className="value">{currentTerm.usageNote}</span></div>
                 <div className="example-box">
                   <div className="example-label">Work-context example</div>
                   <div className="en">{example?.english}</div>
-                  <div className="zh">{example?.chinese}</div>
-                  <div className="pinyin">{example?.pinyin}</div>
+                  <div className="zh mandarin-with-audio">{example?.chinese}{example ? <AudioPlayButton audioUrl={example.audioUrl} label="Play example" text={example.chinese} /> : null}</div>
+                  <div className="pinyin">{example ? formatPinyin(example.pinyin, pinyinMode) : ''}</div>
                   {example?.literalGloss ? <div className="literal">Literal: {example.literalGloss}</div> : null}
                 </div>
               </div>

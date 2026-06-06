@@ -8,7 +8,17 @@ import { SearchControls } from './components/SearchControls';
 import { StudyNav } from './components/StudyNav';
 import { terms } from './data/terms';
 import type { AttemptValidationResult } from './lib/answerValidation';
-import { rateCard } from './lib/spacedRepetition';
+import { normalizeRoute, type StudyRoute } from './lib/learningModes';
+import {
+  createProgressApi,
+  exportProgressCsv,
+  exportProgressJson,
+  importProgress,
+  readCachedProgress,
+  type ProgressSnapshot,
+  type ReviewEvent,
+} from './lib/persistence';
+import { rateCard, ratePronunciation } from './lib/spacedRepetition';
 import type { Category, ProgressMap, Term } from './lib/studySession';
 import {
   buildDeck,
@@ -17,6 +27,7 @@ import {
   getDueCount,
   getMasteredCount,
   getNextReviewLabel,
+  getProgress,
   termId,
 } from './lib/studySession';
 import './styles.css';
@@ -46,6 +57,7 @@ function getInitialRoute() {
 export default function App() {
   const progressApi = useMemo(() => createProgressApi(), []);
   const cachedSnapshot = useMemo(() => readCachedProgress(), []);
+  const [activeRoute, setActiveRoute] = useState<StudyRoute>(getInitialRoute);
   const [activeCategory, setActiveCategory] = useState<Category>('all');
   const [query, setQuery] = useState('');
   const [progress, setProgress] = useState<ProgressMap>(cachedSnapshot.progress);
@@ -101,23 +113,60 @@ export default function App() {
     refreshDeck(filteredTerms, progress);
   }, [activeCategory, query]);
 
+  const persistReview = useCallback((review: ReviewEvent, nextProgress: ProgressMap) => {
+    const nextState = nextProgress[review.termId];
+    if (!nextState) return;
+
+    setReviews((currentReviews) => [...currentReviews, review]);
+    setSyncStatus(review.kind === 'pronunciation' ? 'Saving pronunciation attempt…' : 'Saving review history…');
+    progressApi.saveReview(review, nextState)
+      .then(() => setSyncStatus(review.kind === 'pronunciation' ? 'Pronunciation attempt saved.' : 'Review saved.'))
+      .catch(() => {
+        progressApi.saveProgress(createSnapshot(nextProgress, [...reviews, review])).catch(() => undefined);
+        setSyncStatus('Attempt cached offline; it will sync when the API is available.');
+      });
+  }, [progressApi, reviews]);
+
   const handleRate = useCallback((gotIt: boolean, validation?: AttemptValidationResult) => {
     const term = deck[currentIndex];
     if (!term) return;
 
-    setProgress((currentProgress) => rateCard(term, gotIt, currentProgress, validation));
+    const nextProgress = rateCard(term, gotIt, progress, validation);
+    const nextState = getProgress(term, nextProgress);
+    const review: ReviewEvent = {
+      termId: termId(term),
+      attempt: validation?.normalizedAttempt ?? '',
+      validationResult: gotIt ? 'correct' : 'incorrect',
+      selfRating: gotIt ? 'got-it' : 'needs-review',
+      reviewedAt: nextState.lastReviewedAt ?? Date.now(),
+      nextDueAt: nextState.dueAt,
+      kind: 'vocabulary',
+    };
+
+    setProgress(nextProgress);
     setSessionReviewed((count) => count + 1);
     if (gotIt) setSessionCorrect((count) => count + 1);
     setCurrentIndex((index) => index + 1);
-    setSyncStatus('Saving review history…');
+    persistReview(review, nextProgress);
+  }, [currentIndex, deck, persistReview, progress]);
 
-    progressApi.saveReview(review, nextState)
-      .then(() => setSyncStatus('Review saved.'))
-      .catch(() => {
-        progressApi.saveProgress(createSnapshot(nextProgress, [...reviews, review])).catch(() => undefined);
-        setSyncStatus('Review cached offline; it will sync when the API is available.');
-      });
-  }, [currentIndex, deck, progress, progressApi, reviews]);
+  const handlePronunciationAttempt = useCallback((term: Term, result: 'good' | 'needs-practice', mode: 'recording' | 'tone-drill' | 'listening', feedback = '') => {
+    const nextProgress = ratePronunciation(term, result, progress, mode, feedback);
+    const review: ReviewEvent = {
+      termId: termId(term),
+      attempt: term.simplified,
+      validationResult: result === 'good' ? 'correct' : 'incorrect',
+      selfRating: result === 'good' ? 'got-it' : 'needs-review',
+      reviewedAt: Date.now(),
+      nextDueAt: getProgress(term, nextProgress).dueAt,
+      kind: 'pronunciation',
+      pronunciationResult: result,
+      feedback,
+    };
+
+    setProgress(nextProgress);
+    persistReview(review, nextProgress);
+  }, [persistReview, progress]);
 
   const dueCount = getDueCount(filteredTerms, progress);
   const masteredCount = getMasteredCount(filteredTerms, progress);
@@ -157,21 +206,26 @@ export default function App() {
           query={query}
           scopeLabel={getCategoryName(activeCategory)}
         />
-        <FlashcardStudy
-          category={activeCategory}
-          currentIndex={currentIndex}
-          deck={deck}
-          masteredCount={masteredCount}
-          nextReviewLabel={nextReviewLabel}
-          onRate={handleRate}
-          onRefreshDeck={() => refreshDeck()}
-          reviewedCount={sessionReviewed}
-          sessionCorrect={sessionCorrect}
-        />
+        {activeRoute === '/study/flashcards' ? (
+          <FlashcardStudy
+            category={activeCategory}
+            currentIndex={currentIndex}
+            deck={deck}
+            masteredCount={masteredCount}
+            nextReviewLabel={nextReviewLabel}
+            onRate={handleRate}
+            onRefreshDeck={() => refreshDeck()}
+            reviewedCount={sessionReviewed}
+            sessionCorrect={sessionCorrect}
+          />
+        ) : null}
+        {activeRoute !== '/glossary' ? (
+          <LearningModeStudy onPronunciationAttempt={handlePronunciationAttempt} route={activeRoute} terms={filteredTerms} />
+        ) : null}
         <section className="panel progress-tools" aria-label="Progress import and export tools">
           <div>
             <h2>Progress portability</h2>
-            <p>{syncStatus} Export your review history as JSON for backup or CSV for analysis.</p>
+            <p>{syncStatus} Export vocabulary recall and pronunciation attempts as JSON for backup or CSV for analysis.</p>
           </div>
           <div className="action-row">
             <button className="btn btn-neutral" onClick={handleExportJson} type="button">Download JSON</button>
@@ -184,7 +238,7 @@ export default function App() {
         </section>
         <GlossaryTable terms={filteredTerms} />
       </main>
-      <footer className="footer">Anonymous progress is cached locally; signed-in learners sync through /api/progress, /api/reviews, and /api/progress/:termId.</footer>
+      <footer className="footer">Anonymous vocabulary and pronunciation progress is cached locally; signed-in learners sync through /api/progress, /api/reviews, /api/progress/:termId, and optional /api/pronunciation/score.</footer>
     </>
   );
 }

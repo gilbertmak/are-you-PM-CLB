@@ -349,3 +349,119 @@
     flex-direction: column;
   }
 }
+
+.mandarin-with-audio {
+  align-items: center;
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.audio-btn {
+  background: #ecfeff;
+  border: 1px solid #67e8f9;
+  border-radius: 999px;
+  color: #0e7490;
+  cursor: pointer;
+  font-size: 0.8rem;
+  font-weight: 800;
+  padding: 0.35rem 0.65rem;
+}
+
+.audio-btn:hover {
+  background: #cffafe;
+}
+
+.pinyin-toggle,
+.table-tools,
+.recorder-actions {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.pinyin-toggle {
+  margin-bottom: 0.35rem;
+}
+
+.pinyin-toggle span {
+  color: #64748b;
+  font-size: 0.78rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.pinyin-toggle button,
+.tone-rate {
+  border: 1px solid #cbd5e1;
+  border-radius: 999px;
+  cursor: pointer;
+  font-size: 0.78rem;
+  font-weight: 800;
+  padding: 0.35rem 0.6rem;
+}
+
+.pinyin-toggle button.active {
+  background: #1d4ed8;
+  border-color: #1d4ed8;
+  color: white;
+}
+
+.table-tools {
+  justify-content: space-between;
+  margin: 1.5rem 0 0.75rem;
+}
+
+.recorder-box,
+.tone-drill-box {
+  background: #f8fafc;
+  border: 1px solid #dbeafe;
+  border-radius: 18px;
+  margin-top: 1rem;
+  padding: 1rem;
+}
+
+.recorder-box audio {
+  display: block;
+  margin-top: 0.75rem;
+  width: 100%;
+}
+
+.tone-pattern {
+  background: #1e293b;
+  border-radius: 999px;
+  color: white;
+  display: inline-block;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  margin: 0.5rem 0 1rem;
+  padding: 0.45rem 0.8rem;
+}
+
+.tone-term-grid {
+  display: grid;
+  gap: 0.8rem;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+}
+
+.tone-term-card {
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  display: grid;
+  gap: 0.45rem;
+  padding: 0.9rem;
+}
+
+.tone-rate.good {
+  background: #dcfce7;
+  border-color: #86efac;
+  color: #166534;
+}
+
+.tone-rate.practice {
+  background: #fee2e2;
+  border-color: #fecaca;
+  color: #991b1b;
+}

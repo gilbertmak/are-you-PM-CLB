@@ -2,6 +2,7 @@ import type { ProgressMap, ProgressRecord } from './studySession';
 import { STORAGE_KEY } from './studySession';
 
 export type ValidationResult = 'correct' | 'incorrect';
+export type ReviewKind = 'vocabulary' | 'pronunciation';
 export type SelfRating = 'got-it' | 'needs-review';
 
 export interface ReviewEvent {
@@ -11,6 +12,9 @@ export interface ReviewEvent {
   selfRating: SelfRating;
   reviewedAt: number;
   nextDueAt: number;
+  kind?: ReviewKind;
+  pronunciationResult?: 'good' | 'needs-practice';
+  feedback?: string;
 }
 
 export interface ProgressSnapshot {
@@ -65,6 +69,11 @@ function normalizeProgressRecord(value: unknown): ProgressRecord | null {
     dueAt: Number(value.dueAt) || 0,
     lastResult: value.lastResult === 'right' || value.lastResult === 'left' ? value.lastResult : 'new',
     lastReviewedAt: Number(value.lastReviewedAt) || undefined,
+    history: Array.isArray(value.history) ? value.history as ProgressRecord['history'] : undefined,
+    pronunciationAttempts: Number(value.pronunciationAttempts) || 0,
+    pronunciationGood: Number(value.pronunciationGood) || 0,
+    pronunciationNeedsPractice: Number(value.pronunciationNeedsPractice) || 0,
+    pronunciationHistory: Array.isArray(value.pronunciationHistory) ? value.pronunciationHistory as ProgressRecord['pronunciationHistory'] : undefined,
   };
 }
 
@@ -91,6 +100,9 @@ function normalizeReviewEvent(value: unknown): ReviewEvent | null {
     selfRating,
     reviewedAt: Number(value.reviewedAt) || Date.now(),
     nextDueAt: Number(value.nextDueAt) || 0,
+    kind: value.kind === 'pronunciation' ? 'pronunciation' : 'vocabulary',
+    pronunciationResult: value.pronunciationResult === 'needs-practice' ? 'needs-practice' : value.pronunciationResult === 'good' ? 'good' : undefined,
+    feedback: typeof value.feedback === 'string' ? value.feedback : undefined,
   };
 }
 
@@ -274,12 +286,15 @@ function csvValue(value: string | number) {
 }
 
 export function exportProgressCsv(snapshot: ProgressSnapshot) {
-  const header = ['termId', 'attempt', 'validationResult', 'selfRating', 'reviewedAt', 'nextDueAt'];
+  const header = ['termId', 'kind', 'attempt', 'validationResult', 'selfRating', 'pronunciationResult', 'feedback', 'reviewedAt', 'nextDueAt'];
   const rows = snapshot.reviews.map((review) => [
     review.termId,
+    review.kind ?? 'vocabulary',
     review.attempt,
     review.validationResult,
     review.selfRating,
+    review.pronunciationResult ?? '',
+    review.feedback ?? '',
     new Date(review.reviewedAt).toISOString(),
     new Date(review.nextDueAt).toISOString(),
   ]);
