@@ -40,6 +40,7 @@ export function FlashcardStudy({
   const examples = useMemo(() => (currentTerm ? getExampleSentences(currentTerm) : []), [currentTerm]);
   const example = examples[exampleIndex] ?? examples[0] ?? null;
   const validation = useMemo(() => (currentTerm ? validateAttempt(currentTerm, attempt) : null), [attempt, currentTerm]);
+  const hasAttempt = attempt.trim().length > 0;
 
   useEffect(() => {
     setAttempt('');
@@ -57,7 +58,7 @@ export function FlashcardStudy({
       const activeTag = document.activeElement?.tagName.toLowerCase() ?? '';
       const typing = activeTag === 'textarea' || activeTag === 'input';
 
-      if (event.key === 'Enter' && !event.shiftKey && !revealed) {
+      if (event.key === 'Enter' && !event.shiftKey && !revealed && hasAttempt) {
         event.preventDefault();
         setRevealed(true);
         return;
@@ -71,7 +72,7 @@ export function FlashcardStudy({
 
     window.addEventListener('keydown', handleKeydown);
     return () => window.removeEventListener('keydown', handleKeydown);
-  }, [onRate, revealed, validation]);
+  }, [hasAttempt, onRate, revealed, validation]);
 
   const sessionLabel = deck.length ? `${Math.min(currentIndex + 1, deck.length)} / ${deck.length}` : '0 / 0';
   const completionText = deck.length
@@ -116,7 +117,7 @@ export function FlashcardStudy({
                 <div className="attempt-help">Reveal checks characters, tone-mark pinyin, numbered pinyin, and accepted aliases. Self-rating remains your override.</div>
               </div>
               <div className="action-row">
-                <button aria-label="Reveal flashcard answer" className="btn btn-neutral" disabled={revealed} onClick={() => setRevealed(true)} type="button">
+                <button aria-label="Reveal flashcard answer" className="btn btn-neutral" disabled={revealed || !hasAttempt} onClick={() => setRevealed(true)} type="button">
                   Reveal answer
                 </button>
                 <button aria-label="Refresh flashcard study deck" className="btn btn-refresh" onClick={onRefreshDeck} type="button">Refresh study deck</button>
