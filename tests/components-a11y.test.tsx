@@ -25,6 +25,7 @@ test('flashcard component exposes keyboard instructions and labelled controls', 
   assert.ok(html.includes('Keyboard: Enter reveal'));
   assert.ok(html.includes('aria-label="Mandarin answer attempt"'));
   assert.ok(html.includes('aria-label="Reveal flashcard answer"'));
+  assert.ok(/aria-label="Reveal flashcard answer"[^>]+disabled=""/.test(html));
   assert.ok(html.includes('aria-label="Refresh flashcard study deck"'));
 });
 

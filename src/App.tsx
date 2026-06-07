@@ -113,19 +113,18 @@ export default function App() {
     refreshDeck(filteredTerms, progress);
   }, [filters, query]);
 
-  const persistReview = useCallback((review: ReviewEvent, nextProgress: ProgressMap) => {
+  const persistReview = useCallback((review: ReviewEvent, nextProgress: ProgressMap, nextReviews: ReviewEvent[]) => {
     const nextState = nextProgress[review.termId];
     if (!nextState) return;
 
-    setReviews((currentReviews) => [...currentReviews, review]);
     setSyncStatus(review.kind === 'pronunciation' ? 'Saving pronunciation attempt…' : 'Saving review history…');
     progressApi.saveReview(review, nextState)
       .then(() => setSyncStatus(review.kind === 'pronunciation' ? 'Pronunciation attempt saved.' : 'Review saved.'))
       .catch(() => {
-        progressApi.saveProgress(createSnapshot(nextProgress, [...reviews, review])).catch(() => undefined);
+        progressApi.saveProgress(createSnapshot(nextProgress, nextReviews)).catch(() => undefined);
         setSyncStatus('Attempt cached offline; it will sync when the API is available.');
       });
-  }, [progressApi, reviews]);
+  }, [progressApi]);
 
   const handleRate = useCallback((gotIt: boolean, validation?: AttemptValidationResult) => {
     const term = deck[currentIndex];
@@ -143,11 +142,14 @@ export default function App() {
     };
 
     setProgress(nextProgress);
-    setReviews((currentReviews) => [...currentReviews, review]);
+    setReviews((currentReviews) => {
+      const nextReviews = [...currentReviews, review];
+      persistReview(review, nextProgress, nextReviews);
+      return nextReviews;
+    });
     setSessionReviewed((count) => count + 1);
     if (gotIt) setSessionCorrect((count) => count + 1);
     setCurrentIndex((index) => index + 1);
-    persistReview(review, nextProgress);
   }, [currentIndex, deck, persistReview, progress]);
 
   const handlePronunciationAttempt = useCallback((term: Term, result: 'good' | 'needs-practice', mode: 'recording' | 'tone-drill' | 'listening', feedback = '') => {
@@ -165,7 +167,11 @@ export default function App() {
     };
 
     setProgress(nextProgress);
-    persistReview(review, nextProgress);
+    setReviews((currentReviews) => {
+      const nextReviews = [...currentReviews, review];
+      persistReview(review, nextProgress, nextReviews);
+      return nextReviews;
+    });
   }, [persistReview, progress]);
 
   const dueCount = getDueCount(filteredTerms, progress);
